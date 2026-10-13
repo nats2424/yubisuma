@@ -4,7 +4,7 @@ export function Brand() {
   return (
     <a className="brand" href="#/">
       <span className="brand-mark" aria-hidden />
-      {SITE_NAME}
+      <span className="brand-text">{SITE_NAME}</span>
     </a>
   );
 }

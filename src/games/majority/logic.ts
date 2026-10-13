@@ -1,4 +1,4 @@
-import { shuffle, type GamePlayer, type Scheduled } from '../types';
+import { shuffle, type GameOptions, type GamePlayer, type Scheduled } from '../types';
 import { QUESTIONS, type Question } from './questions';
 
 export const ROUNDS = 5;
@@ -9,6 +9,7 @@ export type Choice = 'a' | 'b';
 
 export type MajorityState = {
   order: string[];
+  rounds: number;
   questions: Question[];
   round: number;
   phase: 'answer' | 'reveal' | 'over';
@@ -21,11 +22,13 @@ export type MajorityState = {
 
 export type MajorityAction = { type: 'answer'; choice: Choice } | { type: 'next' };
 
-export const init = (players: GamePlayer[], now: number): MajorityState => {
+export const init = (players: GamePlayer[], now: number, options: GameOptions = {}): MajorityState => {
   const order = players.map((p) => p.id);
+  const rounds = Math.min(options.rounds ?? ROUNDS, QUESTIONS.length);
   return {
     order,
-    questions: shuffle(QUESTIONS).slice(0, ROUNDS),
+    rounds,
+    questions: shuffle(QUESTIONS).slice(0, rounds),
     round: 1,
     phase: 'answer',
     until: now + ANSWER_MS,
@@ -49,7 +52,7 @@ export const reduce = (s: MajorityState, act: MajorityAction, by: string, now: n
   if (act.type === 'next') {
     if (s.phase === 'answer' && by === 'system') return reveal(s, now);
     if (s.phase !== 'reveal') return s;
-    if (s.round >= ROUNDS) return { ...s, phase: 'over' };
+    if (s.round >= s.rounds) return { ...s, phase: 'over' };
     return { ...s, round: s.round + 1, phase: 'answer', until: now + ANSWER_MS, answers: {}, majority: null };
   }
   if (s.phase !== 'answer' || !s.order.includes(by) || (act.choice !== 'a' && act.choice !== 'b')) return s;

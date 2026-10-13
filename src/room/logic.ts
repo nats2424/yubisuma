@@ -1,4 +1,4 @@
-import type { GameDef, GamePlayer } from '../games/types';
+import { resolveOptions, type GameDef, type GameOptions, type GamePlayer } from '../games/types';
 
 export const MAX_ROOM_PLAYERS = 10;
 const CHAT_KEEP = 60;
@@ -22,6 +22,8 @@ export type RoomState = {
   hostId: string;
   players: RoomPlayer[];
   selectedGame: string;
+  // ゲームごとのホスト設定
+  gameOptions: Record<string, GameOptions>;
   game: { id: string; players: GamePlayer[]; state: unknown; startedAt: number } | null;
   chat: ChatMessage[];
 };
@@ -32,6 +34,7 @@ export type RoomAction =
   | { type: 'kick'; target: string }
   | { type: 'chat'; text: string }
   | { type: 'selectGame'; gameId: string }
+  | { type: 'setOption'; key: string; value: number }
   | { type: 'startGame'; online: string[] }
   | { type: 'endGame' }
   | { type: 'game'; action: unknown }
@@ -46,6 +49,7 @@ export const createRoom = (code: string, host: RoomPlayer, defaultGame: string):
   hostId: host.id,
   players: [host],
   selectedGame: defaultGame,
+  gameOptions: {},
   game: null,
   chat: [],
 });
@@ -128,6 +132,13 @@ export const reduceRoom = (
       if (!isHost || !games[action.gameId] || state.game) return state;
       return { ...state, selectedGame: action.gameId };
     }
+    case 'setOption': {
+      const def = games[state.selectedGame];
+      const opt = def?.options?.find((o) => o.key === action.key);
+      if (!isHost || state.game || !opt || !opt.choices.some((c) => c.value === action.value)) return state;
+      const cur = state.gameOptions?.[def.id] ?? {};
+      return { ...state, gameOptions: { ...state.gameOptions, [def.id]: { ...cur, [action.key]: action.value } } };
+    }
     case 'startGame': {
       const def = games[state.selectedGame];
       if (!isHost || !def) return state;
@@ -135,7 +146,7 @@ export const reduceRoom = (
       const gamePlayers = state.players.filter((p) => online.has(p.id) || p.id === by);
       if (gamePlayers.length < def.minPlayers || gamePlayers.length > def.maxPlayers) return state;
       return withChat(
-        { ...state, game: { id: def.id, players: gamePlayers, state: def.init(gamePlayers, now), startedAt: now } },
+        { ...state, game: { id: def.id, players: gamePlayers, state: def.init(gamePlayers, now, resolveOptions(def, state.gameOptions?.[def.id])), startedAt: now } },
         systemMessage(`「${def.name}」を開始しました`, now),
       );
     }

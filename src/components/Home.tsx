@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { goRoom } from '../App';
-import { GAME_LIST } from '../games/registry';
+import { CATEGORIES, gamesIn } from '../games/registry';
+import { CATEGORY_INFO } from '../games/types';
 import { generateRoomCode, getSavedName, NAME_MAX, normalizeRoomCode, ROOM_CODE_LENGTH, saveName } from '../lib/identity';
 import { isOnlineMode } from '../lib/transport';
 import { Brand, DemoBanner } from './Layout';
@@ -51,7 +52,7 @@ export default function Home() {
             <br />
             すぐにみんなで。
           </h1>
-          <p className="lead">登録不要・ダウンロード不要。1ゲーム1〜5分のミニゲームを、スマホでもPCでも。</p>
+          <p className="lead">登録不要・ダウンロード不要。スキマ時間にサクッと1〜5分、週末はじっくり何戦も。スマホでもPCでも。</p>
         </section>
 
         <section className="panel entry">
@@ -95,25 +96,30 @@ export default function Home() {
           {error && <p className="error">{error}</p>}
         </section>
 
-        <section className="game-catalog">
-          <h2>遊べるゲーム</h2>
-          <ul className="catalog-grid">
-            {GAME_LIST.map((g) => (
-              <li key={g.id} className="catalog-item">
-                <span className="catalog-emoji" aria-hidden>
-                  {g.emoji}
-                </span>
-                <div>
-                  <h3>{g.name}</h3>
-                  <p>{g.tagline}</p>
-                  <p className="meta">
-                    {g.minPlayers === g.maxPlayers ? g.minPlayers : `${g.minPlayers}〜${g.maxPlayers}`}人 · {g.minutes}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
+        {CATEGORIES.map((cat) => (
+          <section key={cat} className="game-catalog">
+            <h2>
+              {CATEGORY_INFO[cat].label}
+              <span className="catalog-sub">{CATEGORY_INFO[cat].description}</span>
+            </h2>
+            <ul className="catalog-grid">
+              {gamesIn(cat).map((g) => (
+                <li key={g.id} className="catalog-item">
+                  <span className="catalog-emoji" aria-hidden>
+                    {g.emoji}
+                  </span>
+                  <div>
+                    <h3>{g.name}</h3>
+                    <p>{g.tagline}</p>
+                    <p className="meta">
+                      {g.minPlayers === g.maxPlayers ? g.minPlayers : `${g.minPlayers}〜${g.maxPlayers}`}人 · {g.minutes}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
       </main>
     </div>
   );

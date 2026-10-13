@@ -1,6 +1,6 @@
 import { Countdown, Panel, Spectating, nameOf } from '../../components/ui';
 import type { GameViewProps } from '../types';
-import { ROUNDS, type Choice, type MajorityAction, type MajorityState } from './logic';
+import { type Choice, type MajorityAction, type MajorityState } from './logic';
 
 export default function MajorityView({ state: s, me, players, send, now }: GameViewProps<MajorityState, MajorityAction>) {
   const q = s.questions[s.round - 1];
@@ -34,7 +34,7 @@ export default function MajorityView({ state: s, me, players, send, now }: GameV
   return (
     <div className="stack">
       <Panel
-        title={`Q${s.round}/${ROUNDS}`}
+        title={`Q${s.round}/${s.rounds}`}
         aside={
           s.phase === 'answer' ? (
             <Countdown until={s.until} now={now} label="残り" />
@@ -74,7 +74,7 @@ export default function MajorityView({ state: s, me, players, send, now }: GameV
         )}
         {s.phase === 'reveal' && playing && (
           <button className="btn primary" onClick={() => send({ type: 'next' })}>
-            {s.round >= ROUNDS ? '結果を見る' : '次の質問へ'}
+            {s.round >= s.rounds ? '結果を見る' : '次の質問へ'}
           </button>
         )}
       </Panel>

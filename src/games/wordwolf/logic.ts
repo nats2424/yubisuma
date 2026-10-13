@@ -1,4 +1,4 @@
-import { pick, shuffle, type GamePlayer, type Scheduled } from '../types';
+import { pick, shuffle, type GameOptions, type GamePlayer, type Scheduled } from '../types';
 import { WORD_PAIRS } from './words';
 
 export const TALK_MS = 3 * 60 * 1000;
@@ -23,7 +23,7 @@ export type WordWolfAction =
 
 export const wolfCount = (n: number) => (n >= 6 ? 2 : 1);
 
-export const init = (players: GamePlayer[], now: number): WordWolfState => {
+export const init = (players: GamePlayer[], now: number, options: GameOptions = {}): WordWolfState => {
   const order = players.map((p) => p.id);
   const pair = shuffle(pick(WORD_PAIRS));
   const [citizenWord, wolfWord] = pair;
@@ -35,7 +35,7 @@ export const init = (players: GamePlayer[], now: number): WordWolfState => {
     wolves,
     citizenWord,
     wolfWord,
-    talkEndsAt: now + TALK_MS,
+    talkEndsAt: now + (options.talkMinutes ? options.talkMinutes * 60_000 : TALK_MS),
     votes: {},
     result: null,
   };

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { goHome, goRoom } from '../App';
-import { GAMES, GAME_LIST } from '../games/registry';
+import { CATEGORIES, GAMES, gamesIn } from '../games/registry';
+import { CATEGORY_INFO, resolveOptions } from '../games/types';
 import { getPlayerId, getSavedName, NAME_MAX, saveName } from '../lib/identity';
 import { isOnlineMode } from '../lib/transport';
 import type { RoomState } from '../room/logic';
@@ -163,9 +164,14 @@ function RoomScreen({ room, state }: { room: RoomHandle; state: RoomState }) {
         <Brand />
         <div className="room-meta">
           <span className="room-code" title="ルームコード">
-            <span className="muted">ROOM</span> <span className="mono">{state.code}</span>
+            <span className="muted room-label">ROOM</span> <span className="mono">{state.code}</span>
           </span>
           <ShareButton code={state.code} />
+          {!wide && (
+            <button className="btn small chat-toggle" onClick={() => setChatOpen(true)} aria-label="チャットを開く">
+              💬{unread > 0 && <span className="badge">{unread}</span>}
+            </button>
+          )}
           <button className="btn small ghost" onClick={leave}>
             退出
           </button>
@@ -184,9 +190,6 @@ function RoomScreen({ room, state }: { room: RoomHandle; state: RoomState }) {
           </aside>
         ) : (
           <>
-            <button className="chat-fab" onClick={() => setChatOpen(true)} aria-label="チャットを開く">
-              💬{unread > 0 && <span className="badge">{unread}</span>}
-            </button>
             {chatOpen && (
               <div className="sheet-backdrop" onClick={() => setChatOpen(false)}>
                 <div className="sheet" onClick={(e) => e.stopPropagation()}>
@@ -257,6 +260,7 @@ function Members({
 function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
   const { isHost, online, dispatch } = room;
   const selected = GAMES[state.selectedGame];
+  const options = resolveOptions(selected, state.gameOptions?.[selected.id]);
   const count = state.players.filter((p) => online.has(p.id)).length;
   const tooFew = count < selected.minPlayers;
   const tooMany = count > selected.maxPlayers;
@@ -264,24 +268,32 @@ function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
   return (
     <div className="stack">
       <Panel title="ゲームを選ぶ" aside={!isHost && <span className="pill">ホストが選びます</span>}>
-        <div className="game-picker">
-          {GAME_LIST.map((g) => (
-            <button
-              key={g.id}
-              className={`game-option${g.id === state.selectedGame ? ' selected' : ''}`}
-              disabled={!isHost}
-              onClick={() => dispatch({ type: 'selectGame', gameId: g.id })}
-            >
-              <span className="game-emoji" aria-hidden>
-                {g.emoji}
-              </span>
-              <span className="game-name">{g.name}</span>
-              <span className="game-meta">
-                {g.minPlayers}〜{g.maxPlayers}人 · {g.minutes}
-              </span>
-            </button>
-          ))}
-        </div>
+        {CATEGORIES.map((cat) => (
+          <div key={cat} className="picker-group">
+            <p className="picker-label">
+              {CATEGORY_INFO[cat].label}
+              <span className="muted"> {CATEGORY_INFO[cat].description}</span>
+            </p>
+            <div className="game-picker">
+              {gamesIn(cat).map((g) => (
+                <button
+                  key={g.id}
+                  className={`game-option${g.id === state.selectedGame ? ' selected' : ''}`}
+                  disabled={!isHost}
+                  onClick={() => dispatch({ type: 'selectGame', gameId: g.id })}
+                >
+                  <span className="game-emoji" aria-hidden>
+                    {g.emoji}
+                  </span>
+                  <span className="game-name">{g.name}</span>
+                  <span className="game-meta">
+                    {g.minPlayers}〜{g.maxPlayers}人 · {g.minutes}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
       </Panel>
 
       <Panel title={`${selected.emoji} ${selected.name}`}>
@@ -291,6 +303,23 @@ function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
             <li key={r}>{r}</li>
           ))}
         </ol>
+        {selected.options?.map((opt) => (
+          <div key={opt.key} className="option-row">
+            <span className="label">{opt.label}</span>
+            <div className="segmented">
+              {opt.choices.map((c) => (
+                <button
+                  key={c.value}
+                  className={options[opt.key] === c.value ? 'selected' : ''}
+                  disabled={!isHost}
+                  onClick={() => dispatch({ type: 'setOption', key: opt.key, value: c.value })}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
         {isHost ? (
           <>
             <button

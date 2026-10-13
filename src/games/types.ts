@@ -17,6 +17,30 @@ export type GameViewProps<S, A> = {
   now: () => number;
 };
 
+export type GameCategory = 'quick' | 'long';
+
+export const CATEGORY_INFO: Record<GameCategory, { label: string; description: string }> = {
+  quick: { label: 'サクッと', description: '1〜5分。待ち時間やちょっとした休憩に' },
+  long: { label: 'じっくり', description: '20分〜。腰を据えて何戦も遊べる' },
+};
+
+// ホストがロビーで選べるゲーム設定（ラウンド数など）
+export type GameOption = {
+  key: string;
+  label: string;
+  choices: { value: number; label: string }[];
+  default: number;
+};
+export type GameOptions = Record<string, number>;
+
+export const resolveOptions = (def: GameDef, chosen: GameOptions | undefined): GameOptions =>
+  Object.fromEntries(
+    (def.options ?? []).map((o) => {
+      const v = chosen?.[o.key];
+      return [o.key, o.choices.some((c) => c.value === v) ? v! : o.default];
+    }),
+  );
+
 // ゲーム定義。reduce/schedule はホストの端末上でのみ実行される純粋関数。
 export interface GameDef<S = any, A = any> {
   id: string;
@@ -27,7 +51,9 @@ export interface GameDef<S = any, A = any> {
   minPlayers: number;
   maxPlayers: number;
   minutes: string;
-  init: (players: GamePlayer[], now: number) => S;
+  category: GameCategory;
+  options?: GameOption[];
+  init: (players: GamePlayer[], now: number, options: GameOptions) => S;
   // by はプレイヤーID。タイマー由来のアクションは 'system'
   reduce: (state: S, action: A, by: string, now: number) => S;
   schedule?: (state: S) => Scheduled<A>;

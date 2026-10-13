@@ -472,7 +472,7 @@ input:focus {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 16px 16px 96px;
+  padding: 16px 16px 40px;
   display: grid;
   gap: 16px;
   align-items: start;
@@ -668,19 +668,16 @@ input:focus {
   gap: 8px;
 }
 
-.chat-fab {
-  position: fixed;
-  right: 16px;
-  bottom: max(16px, env(safe-area-inset-bottom));
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: none;
-  background: var(--accent);
-  font-size: 24px;
-  cursor: pointer;
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
-  z-index: 20;
+.chat-toggle {
+  position: relative;
+  padding: 0 10px;
+}
+
+@media (max-width: 420px) {
+  .room .brand-text,
+  .room-label {
+    display: none;
+  }
 }
 
 .badge {
@@ -1065,4 +1062,200 @@ input:focus {
   font-size: 11px;
   font-weight: 400;
   color: var(--muted);
+}
+
+/* ---------- カテゴリ・ゲーム設定 ---------- */
+.catalog-sub {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.picker-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.picker-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.picker-label .muted {
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.option-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.option-row .label {
+  margin: 0;
+}
+
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.segmented button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segmented button.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.segmented button:disabled {
+  cursor: default;
+}
+
+.segmented button:disabled:not(.selected) {
+  opacity: 0.5;
+}
+
+/* ---------- 大富豪 ---------- */
+.card {
+  --card-ink: #1d1c1a;
+  width: 44px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid #d7d2c8;
+  background: #fffdf8;
+  color: var(--card-ink);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.05;
+  font-family: Georgia, 'Times New Roman', serif;
+  padding: 0;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+button.card {
+  cursor: pointer;
+}
+
+.card.red {
+  --card-ink: #c0392b;
+}
+
+.card.joker {
+  --card-ink: #6b3fa0;
+}
+
+.card-rank {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.card-suit {
+  font-size: 18px;
+}
+
+.card-joker {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  writing-mode: vertical-rl;
+  font-family: system-ui, sans-serif;
+}
+
+.card.selected {
+  transform: translateY(-10px);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), 0 6px 12px rgb(0 0 0 / 0.18);
+}
+
+.hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 10px;
+}
+
+@media (min-width: 600px) {
+  .card {
+    width: 52px;
+    height: 76px;
+  }
+  .card-rank {
+    font-size: 24px;
+  }
+}
+
+.hand-actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+}
+
+.field {
+  min-height: 120px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.field-cards {
+  display: flex;
+  gap: 6px;
+}
+
+.field-cards .card {
+  width: 56px;
+  height: 80px;
+}
+
+.turn-line {
+  margin: 0;
+  text-align: center;
+}
+
+.turn-line strong {
+  color: var(--accent);
+}
+
+.event-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.tally > li.is-turn {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.pill.revolution {
+  background: var(--bad);
+  color: #fff;
 }
