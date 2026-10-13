@@ -4,6 +4,10 @@ import DaifugoView from './daifugo/View';
 import * as majority from './majority/logic';
 import MajorityView from './majority/View';
 import * as reaction from './reaction/logic';
+import * as rush from './rush/logic';
+import RushView from './rush/View';
+import * as sugoroku from './sugoroku/logic';
+import SugorokuView from './sugoroku/View';
 import ReactionView from './reaction/View';
 import * as wordwolf from './wordwolf/logic';
 import WordWolfView from './wordwolf/View';
@@ -92,6 +96,37 @@ export const GAME_LIST: GameDef[] = [
     View: ReactionView,
   },
   {
+    id: 'rush',
+    name: 'ミニゲームラッシュ',
+    emoji: '💥',
+    tagline: '数秒で終わるミニゲームが次々に。だんだん速くなる',
+    rules: [
+      '「連打！」「よけろ！」「止めろ！」など、数秒で終わるミニゲームが連続で出題されます。',
+      '全員が同時に同じゲームに挑戦。成功で1pt、成功者の中でトップスコアならさらに1pt。',
+      'ステージが進むほどスピードアップ。最後に合計ポイントで順位が決まります。',
+    ],
+    minPlayers: 1,
+    maxPlayers: 10,
+    minutes: '約2〜4分',
+    category: 'quick',
+    options: [
+      {
+        key: 'stages',
+        label: 'ステージ数',
+        choices: [
+          { value: 5, label: '5' },
+          { value: 10, label: '10' },
+          { value: 20, label: '20' },
+        ],
+        default: 10,
+      },
+    ],
+    init: rush.init,
+    reduce: rush.reduce,
+    schedule: rush.schedule,
+    View: RushView,
+  },
+  {
     id: 'yubisuma',
     name: '指スマ',
     emoji: '👍',
@@ -109,6 +144,38 @@ export const GAME_LIST: GameDef[] = [
     reduce: yubisuma.reduce,
     schedule: yubisuma.schedule,
     View: YubisumaView,
+  },
+  {
+    id: 'sugoroku',
+    name: 'すごろくパーティ',
+    emoji: '🎲',
+    tagline: 'サイコロで進んでスターを集める。毎ラウンドミニゲーム対決',
+    rules: [
+      '順番にサイコロを振って盤面を進みます。青マス+3コイン、赤マス−3コイン、「!」はラッキー、「?」はハプニング。',
+      '⭐のマスを通過・到着したとき20コインあればスターと交換。スターは別の場所へ移動します。',
+      '全員が進んだらミニゲーム。順位に応じてコイン（1位+10 / 2位+6 / 3位+3）。',
+      '最終ラウンド後、スターの数（同数ならコイン）で勝敗が決まります。',
+    ],
+    minPlayers: 2,
+    maxPlayers: 8,
+    minutes: '20〜40分',
+    category: 'long',
+    options: [
+      {
+        key: 'rounds',
+        label: 'ラウンド数',
+        choices: [
+          { value: 5, label: '5（約15分）' },
+          { value: 8, label: '8（約25分）' },
+          { value: 12, label: '12（約40分）' },
+        ],
+        default: 8,
+      },
+    ],
+    init: sugoroku.init,
+    reduce: sugoroku.reduce,
+    schedule: sugoroku.schedule,
+    View: SugorokuView,
   },
   {
     id: 'daifugo',
