@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rankByScore, startMicroRound, submitMicro } from '../games/micro/core';
 import * as rush from '../games/rush/logic';
-import * as sugo from '../games/sugoroku/logic';
 
 const P = ['a', 'b', 'c'].map((id) => ({ id, name: id }));
 
@@ -39,55 +38,5 @@ describe('rush', () => {
     expect(s.phase).toBe('result');
     s = rush.reduce(s, { type: 'next' }, 'system', 0);
     expect(s.phase).toBe('over');
-  });
-});
-
-describe('sugoroku', () => {
-  it('buys a star when passing it with enough coins', () => {
-    let s = sugo.init(P, 0, {});
-    const p = sugo.currentPlayer(s);
-    s = { ...s, starAt: 2, coins: { ...s.coins, [p]: 25 } };
-    s = sugo.roll(s, 0, 4);
-    expect(s.pos[p]).toBe(4);
-    expect(s.stars[p]).toBe(1);
-    // 25 - 20 + 青マス3
-    expect(s.coins[p]).toBe(8);
-    expect(s.starAt).not.toBe(2);
-    expect(s.phase).toBe('moved');
-  });
-
-  it('red square never goes negative', () => {
-    let s = sugo.init(P, 0, {});
-    const p = sugo.currentPlayer(s);
-    s = { ...s, starAt: 20, coins: { ...s.coins, [p]: 1 } };
-    s = sugo.roll(s, 0, 3);
-    expect(s.coins[p]).toBe(0);
-  });
-
-  it('only the current player can roll', () => {
-    const s = sugo.init(P, 0, {});
-    const other = s.order.find((id) => id !== sugo.currentPlayer(s))!;
-    expect(sugo.reduce(s, { type: 'roll' }, other, 0)).toBe(s);
-  });
-
-  it('runs a full game on timeouts with minigame awards', () => {
-    let s = sugo.init(P, 0, { rounds: 3 });
-    let steps = 0;
-    let sawMini = false;
-    while (s.phase !== 'over' && steps++ < 500) {
-      if (s.phase === 'minigame' && s.mini) {
-        sawMini = true;
-        s.order.forEach((id, i) => (s = sugo.reduce(s, { type: 'submit', result: { score: i * 10, success: true } }, id, 0)));
-        expect(s.phase).toBe('miniResult');
-        expect(Math.max(...Object.values(s.miniAwards))).toBe(10);
-        continue;
-      }
-      const sch = sugo.schedule(s)!;
-      s = sugo.reduce(s, sch.action, 'system', sch.at);
-      Object.values(s.coins).forEach((c) => expect(c).toBeGreaterThanOrEqual(0));
-    }
-    expect(sawMini).toBe(true);
-    expect(s.phase).toBe('over');
-    expect(s.round).toBe(3);
   });
 });

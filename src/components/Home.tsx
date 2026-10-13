@@ -94,6 +94,9 @@ export default function Home() {
             </button>
           </form>
           {error && <p className="error">{error}</p>}
+          <p className="practice-link">
+            <a href="#/practice">ひとりで瞬間ミニゲームを試す →</a>
+          </p>
         </section>
 
         {CATEGORIES.map((cat) => (

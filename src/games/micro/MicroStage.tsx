@@ -11,10 +11,11 @@ type Props = {
   // ホストが既に受け取っている自分の結果（リロード時など）
   existing?: MicroResult;
   label?: string;
+  waitingMessage?: string;
 };
 
 // 瞬間ミニゲーム1本分の進行：指示表示 → プレイ → 結果待ち
-export default function MicroStage({ round, playing, now, onSubmit, existing, label }: Props) {
+export default function MicroStage({ round, playing, now, onSubmit, existing, label, waitingMessage = 'みんなを待っています' }: Props) {
   useTicker(100);
   const meta = microMeta(round.microId);
   const Game = MICRO_COMPONENTS[round.microId];
@@ -64,7 +65,9 @@ export default function MicroStage({ round, playing, now, onSubmit, existing, la
     return (
       <div className={`micro-intro ${myResult.success ? 'ok' : 'ng'}`}>
         <p className="micro-title">{myResult.success ? '成功！' : '失敗…'}</p>
-        <p className="micro-hint">スコア {myResult.score}　みんなを待っています</p>
+        <p className="micro-hint">
+          スコア {myResult.score}　{waitingMessage}
+        </p>
       </div>
     );
   }

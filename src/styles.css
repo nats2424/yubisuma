@@ -18,7 +18,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #131417;
     --surface: #1c1d22;
     --surface-2: #25272d;
@@ -33,6 +33,22 @@
     --shadow: none;
     color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: #131417;
+  --surface: #1c1d22;
+  --surface-2: #25272d;
+  --border: #2f3138;
+  --text: #ecebe8;
+  --muted: #9a978f;
+  --accent: #e8735a;
+  --accent-ink: #1a0f0b;
+  --accent-soft: #e8735a22;
+  --good: #5cc79c;
+  --bad: #ef6b5b;
+  --shadow: none;
+  color-scheme: dark;
 }
 
 * {
@@ -179,6 +195,11 @@ input {
   cursor: pointer;
   transition: transform 0.08s, background 0.15s, opacity 0.15s;
   white-space: nowrap;
+}
+
+a.btn {
+  text-decoration: none;
+  color: inherit;
 }
 
 .btn:active:not(:disabled) {
@@ -1557,136 +1578,53 @@ button.card {
   font-weight: 700;
 }
 
-/* ---------- すごろく ---------- */
-.board {
+
+/* ---------- 練習ページ ---------- */
+.practice-main {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px 40px;
+}
+
+.practice-grid {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  grid-template-rows: repeat(6, auto);
-  gap: 4px;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 }
 
-.sq {
-  position: relative;
-  aspect-ratio: 1;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 800;
-  color: #fff;
-  min-width: 0;
-}
-
-.sq-start {
-  background: #6b6f78;
-}
-
-.sq-blue {
-  background: #4a7fd1;
-}
-
-.sq-red {
-  background: #d1584a;
-}
-
-.sq-lucky {
-  background: #2f9e6b;
-}
-
-.sq-bad {
-  background: #8a5cc2;
-}
-
-.sq.has-star {
-  box-shadow: 0 0 0 3px #f2c94c;
-}
-
-.sq-label {
-  opacity: 0.9;
-}
-
-.tokens {
-  position: absolute;
-  inset: auto 2px 2px 2px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
+.practice-actions {
   justify-content: center;
 }
 
-.token {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
-}
-
-.token.me {
-  width: 14px;
-  height: 14px;
-}
-
-@media (min-width: 600px) {
-  .sq {
-    font-size: 15px;
-  }
-  .token {
-    width: 16px;
-    height: 16px;
-  }
-  .token.me {
-    width: 20px;
-    height: 20px;
-  }
-}
-
-.board-center {
-  grid-row: 2 / 6;
-  grid-column: 2 / 8;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
+.practice-link {
   text-align: center;
-  padding: 8px;
-  font-size: 13px;
-  min-width: 0;
-}
-
-.board-center p {
+  font-size: 14px;
   margin: 0;
 }
 
-.dice-button {
-  font-size: 16px;
+.practice-link a {
+  color: var(--accent);
 }
 
-.dice-face {
-  font-size: 44px;
-  font-weight: 900;
-  line-height: 1.1;
-  animation: pop-in 0.3s;
+.share-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 16px;
+  left: 16px;
+  max-width: 420px;
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
 }
 
-.board-event {
-  font-weight: 700;
-}
-
-.mini-awards {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: 12px;
-}
-
-.dot-inline {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 6px;
-  vertical-align: middle;
+.btn.armed,
+.link.armed {
+  color: var(--bad);
+  border-color: var(--bad);
 }

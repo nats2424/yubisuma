@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import Home from './components/Home';
+import Practice from './components/Practice';
 import Room from './components/Room';
 import { normalizeRoomCode, ROOM_CODE_LENGTH } from './lib/identity';
 
-// ハッシュルーティング: #/ ＝ トップ、#/r/ABCD ＝ ルーム
-type Route = { page: 'home' } | { page: 'room'; code: string };
+// ハッシュルーティング: #/ ＝ トップ、#/practice ＝ ひとりで練習、#/r/ABCD ＝ ルーム
+type Route = { page: 'home' } | { page: 'practice' } | { page: 'room'; code: string };
 
 const parse = (): Route => {
+  if (location.hash.startsWith('#/practice')) return { page: 'practice' };
   const m = location.hash.match(/^#\/r\/([A-Za-z0-9]+)/);
   if (m) {
     const code = normalizeRoomCode(m[1]);
@@ -38,5 +40,6 @@ export default function App() {
     const create = createdCode === route.code;
     return <Room key={route.code} code={route.code} create={create} onCreated={() => (createdCode = null)} />;
   }
+  if (route.page === 'practice') return <Practice />;
   return <Home />;
 }

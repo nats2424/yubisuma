@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { GamePlayer } from '../games/types';
 
 // 一定間隔で再描画する（カウントダウン表示用）
@@ -41,4 +41,37 @@ export function Panel({ title, aside, children }: { title?: ReactNode; aside?: R
 
 export function Spectating() {
   return <p className="notice">観戦中です。次のゲームから参加できます。</p>;
+}
+
+// confirm() が使えない環境（埋め込み表示など）でも動く2段階確認ボタン
+export function ConfirmButton({
+  className,
+  label,
+  confirmLabel,
+  onConfirm,
+}: {
+  className: string;
+  label: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+}) {
+  const [armed, setArmed] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+  const click = () => {
+    if (armed) {
+      setArmed(false);
+      onConfirm();
+      return;
+    }
+    setArmed(true);
+    timer.current = setTimeout(() => setArmed(false), 3000);
+  };
+  return (
+    <button className={`${className}${armed ? ' armed' : ''}`} onClick={click}>
+      {armed ? confirmLabel : label}
+    </button>
+  );
 }

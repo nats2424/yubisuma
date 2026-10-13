@@ -8,7 +8,7 @@ import type { RoomState } from '../room/logic';
 import { useRoom, type RoomHandle } from '../room/useRoom';
 import Chat from './Chat';
 import { Brand, DemoBanner } from './Layout';
-import { Panel } from './ui';
+import { ConfirmButton, Panel } from './ui';
 
 type Props = { code: string; create: boolean; onCreated: () => void };
 
@@ -114,6 +114,7 @@ function Message({ title, children }: { title: string; children: ReactNode }) {
 
 function ShareButton({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
+  const [shown, setShown] = useState<string | null>(null);
   const url = `${location.origin}${location.pathname}#/r/${code}`;
   const share = async () => {
     const text = `SUKIMAで遊ぼう！ 部屋コード: ${code}`;
@@ -121,9 +122,9 @@ function ShareButton({ code }: { code: string }) {
       try {
         await navigator.share({ title: 'SUKIMA', text, url });
         return;
-      } catch {
-        // キャンセル時はコピーにフォールバックしない
-        return;
+      } catch (e) {
+        // ユーザーがキャンセルした場合はそのまま終了、共有が使えない場合はコピーへ
+        if ((e as Error).name === 'AbortError') return;
       }
     }
     try {
@@ -131,13 +132,24 @@ function ShareButton({ code }: { code: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      prompt('このURLを共有してください', url);
+      // クリップボードが使えない環境では URL を表示する
+      setShown(url);
     }
   };
   return (
-    <button className="btn small" onClick={share}>
-      {copied ? 'コピーしました' : '招待する'}
-    </button>
+    <>
+      <button className="btn small" onClick={share}>
+        {copied ? 'コピーしました' : '招待する'}
+      </button>
+      {shown && (
+        <div className="share-popover" role="dialog" aria-label="招待URL">
+          <input id="share-url" readOnly value={shown} onFocus={(e) => e.currentTarget.select()} autoFocus />
+          <button className="btn small ghost" onClick={() => setShown(null)}>
+            閉じる
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -151,10 +163,6 @@ function RoomScreen({ room, state }: { room: RoomHandle; state: RoomState }) {
     if (chatVisible) setSeenChat(state.chat.length);
   }, [chatVisible, state.chat.length]);
   const unread = state.chat.slice(seenChat).filter((m) => m.by !== null && m.by !== me).length;
-
-  const leave = () => {
-    if (confirm('部屋を退出しますか？')) room.leave();
-  };
 
   const chat = <Chat messages={state.chat} me={me} onSend={(text) => dispatch({ type: 'chat', text })} />;
 
@@ -172,9 +180,7 @@ function RoomScreen({ room, state }: { room: RoomHandle; state: RoomState }) {
               💬{unread > 0 && <span className="badge">{unread}</span>}
             </button>
           )}
-          <button className="btn small ghost" onClick={leave}>
-            退出
-          </button>
+          <ConfirmButton className="btn small ghost" label="退出" confirmLabel="本当に退出" onConfirm={room.leave} />
         </div>
       </header>
       {!isOnlineMode && <DemoBanner />}
@@ -246,9 +252,7 @@ function Members({
             </span>
             {p.id === state.hostId && <span className="tag">ホスト</span>}
             {isHost && p.id !== me && !online.has(p.id) && (
-              <button className="link" onClick={() => confirm(`${p.name}さんを退出させますか？`) && onKick(p.id)}>
-                外す
-              </button>
+              <ConfirmButton className="link" label="外す" confirmLabel="外す？（もう一度タップ）" onConfirm={() => onKick(p.id)} />
             )}
           </li>
         ))}
