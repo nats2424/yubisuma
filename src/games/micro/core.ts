@@ -47,6 +47,16 @@ export const randInt = (r: () => number, min: number, max: number) => min + Math
 // ---------- ホスト側のラウンド管理 ----------
 
 const INTRO_MS = 2500;
+export const LIVES = 4;
+
+// 何ステージ目か → スピード倍率。5ステージごとに速くなる（最大2倍）
+export const speedForStage = (stage: number) => Math.min(2, 1 + Math.floor((stage - 1) / 5) * 0.15);
+
+// 直前と同じゲームが続かないように次のゲームを選ぶ
+export const nextMicroId = (prev?: string) => {
+  const pool = MICRO_IDS.filter((id) => id !== prev);
+  return pool[Math.floor(Math.random() * pool.length)];
+};
 // 通信遅延・時計のずれを吸収する猶予
 const GRACE_MS = 2500;
 
@@ -59,10 +69,10 @@ export type MicroRound = {
   results: Record<string, MicroResult>;
 };
 
-export const startMicroRound = (microId: string, now: number, speed = 1): MicroRound => {
+export const startMicroRound = (microId: string, now: number, speed = 1, introMs = INTRO_MS): MicroRound => {
   const meta = microMeta(microId);
   const duration = Math.round(meta.scales ? meta.baseMs / speed : meta.baseMs);
-  const startAt = now + INTRO_MS;
+  const startAt = now + introMs;
   return {
     microId,
     seed: Math.floor(Math.random() * 2 ** 31),

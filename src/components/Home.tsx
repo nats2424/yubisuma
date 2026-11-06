@@ -95,7 +95,7 @@ export default function Home() {
           </form>
           {error && <p className="error">{error}</p>}
           <p className="practice-link">
-            <a href="#/practice">ひとりで瞬間ミニゲームを試す →</a>
+            <a href="#/practice">ひとりでミニゲームに挑戦 →</a>
           </p>
         </section>
 

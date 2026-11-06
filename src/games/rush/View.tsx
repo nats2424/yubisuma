@@ -1,83 +1,71 @@
 import { Panel, nameOf } from '../../components/ui';
-import { microMeta, resultOf } from '../micro/core';
+import Hearts from '../micro/Hearts';
 import MicroStage from '../micro/MicroStage';
+import { speedForStage } from '../micro/core';
 import type { GameViewProps } from '../types';
-import { speedAt, type RushAction, type RushState } from './logic';
+import { alive, ranking, type RushAction, type RushState } from './logic';
 
 export default function RushView({ state: s, me, players, send, now }: GameViewProps<RushState, RushAction>) {
-  const playing = s.order.includes(me);
-  const ranking = [...s.order].sort((a, b) => s.points[b] - s.points[a]);
-  const total = s.playlist.length;
+  const startLives = s.startLives;
+  const meAlive = s.lives[me] > 0;
+  const rank = ranking(s);
 
   if (s.phase === 'over') {
-    const top = s.points[ranking[0]];
+    const top = s.cleared[rank[0]];
     return (
-      <Panel title="最終結果">
+      <Panel title="ゲームオーバー">
         <ol className="ranking">
-          {ranking.map((id) => (
-            <li key={id} className={s.points[id] === top ? 'first' : ''}>
+          {rank.map((id) => (
+            <li key={id} className={s.cleared[id] === top ? 'first' : ''}>
               <span>
-                {s.points[id] === top && '🏆 '}
+                {s.cleared[id] === top && top > 0 && '🏆 '}
                 {nameOf(players, id)}
               </span>
-              <span className="mono">{s.points[id]}pt</span>
+              <span className="mono">{s.cleared[id]}ステージ クリア</span>
             </li>
           ))}
         </ol>
-        <p className="hint">成功で1pt、成功者の中でトップスコアならさらに1pt。</p>
       </Panel>
     );
   }
 
-  const speed = speedAt(s.stage);
+  const speedUp = s.stage > 1 && speedForStage(s.stage) > speedForStage(s.stage - 1);
   return (
     <div className="stack">
       <div className="rush-header">
-        <span className="pill">
-          STAGE {s.stage}/{total}
-        </span>
-        {speed > 1 && <span className="pill">SPEED ×{speed.toFixed(2)}</span>}
+        <span className="stage-no">STAGE {s.stage}</span>
+        {s.order.includes(me) && <Hearts lives={s.lives[me] ?? 0} max={startLives} />}
       </div>
 
       {s.phase === 'play' ? (
         <MicroStage
           round={s.round}
-          playing={playing}
+          playing={meAlive}
           now={now}
           existing={s.round.results[me]}
-          label={`STAGE ${s.stage}`}
+          label={speedUp ? 'SPEED UP!' : `STAGE ${s.stage}`}
+          waitingMessage={alive(s).length > 1 ? 'みんなを待っています' : ''}
           onSubmit={(result) => send({ type: 'submit', result })}
         />
       ) : (
-        <Panel title={`STAGE ${s.stage}「${microMeta(s.round.microId).title}」の結果`}>
-          <ul className="tally">
-            {s.order.map((id) => {
-              const r = resultOf(s.round, id);
-              return (
-                <li key={id}>
-                  <span>
-                    {nameOf(players, id)}
-                    {s.lastTop.includes(id) && <span className="tag good">TOP +1</span>}
-                  </span>
-                  <span className={r.success ? 'ok-text' : 'muted'}>
-                    {r.success ? '成功' : '失敗'} <span className="mono muted">{r.score}</span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </Panel>
+        <div className={`micro-intro ${s.lastFailed.includes(me) ? 'ng' : meAlive ? 'ok' : ''}`}>
+          <p className="micro-title">
+            {s.lastFailed.includes(me) ? (s.lives[me] > 0 ? 'ミス！' : 'ゲームオーバー') : meAlive ? 'クリア！' : '観戦中'}
+          </p>
+          <p className="micro-hint">残り {alive(s).length}人</p>
+        </div>
       )}
 
-      <Panel title="スコア">
+      <Panel title="プレイヤー">
         <ul className="tally">
-          {ranking.map((id) => (
-            <li key={id}>
-              <span>{nameOf(players, id)}</span>
-              <span className="mono">
-                {s.phase === 'play' && (id in s.round.results ? '✓ ' : '… ')}
-                {s.points[id]}pt
+          {rank.map((id) => (
+            <li key={id} className={s.lives[id] > 0 ? '' : 'out'}>
+              <span>
+                {nameOf(players, id)}
+                {s.phase === 'result' && s.lastFailed.includes(id) && <span className="tag bad">ミス</span>}
+                {s.phase === 'play' && s.lives[id] > 0 && id in s.round.results && <span className="tag good">済</span>}
               </span>
+              <Hearts lives={s.lives[id]} max={startLives} />
             </li>
           ))}
         </ul>

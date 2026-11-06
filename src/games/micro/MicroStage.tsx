@@ -65,9 +65,7 @@ export default function MicroStage({ round, playing, now, onSubmit, existing, la
     return (
       <div className={`micro-intro ${myResult.success ? 'ok' : 'ng'}`}>
         <p className="micro-title">{myResult.success ? '成功！' : '失敗…'}</p>
-        <p className="micro-hint">
-          スコア {myResult.score}　{waitingMessage}
-        </p>
+        {waitingMessage && <p className="micro-hint">{waitingMessage}</p>}
       </div>
     );
   }

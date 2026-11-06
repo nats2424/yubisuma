@@ -23,20 +23,42 @@ describe('micro core', () => {
 });
 
 describe('rush', () => {
-  it('scores stages and ends', () => {
-    let s = rush.init(P, 0, { stages: 2 });
-    expect(s.playlist).toHaveLength(2);
-    s = rush.reduce(s, { type: 'submit', result: { score: 10, success: true } }, 'a', 0);
-    s = rush.reduce(s, { type: 'submit', result: { score: 20, success: true } }, 'b', 0);
-    s = rush.reduce(s, { type: 'submit', result: { score: 50, success: false } }, 'c', 0);
+  const ok = { score: 1, success: true };
+  const ng = { score: 0, success: false };
+  const run = (s: rush.RushState, results: Record<string, typeof ok>) => {
+    for (const [id, r] of Object.entries(results)) s = rush.reduce(s, { type: 'submit', result: r }, id, 0);
+    return s;
+  };
+
+  it('loses a life on failure and continues until everyone is out', () => {
+    let s = rush.init(P.slice(0, 2), 0, { lives: 2 });
+    s = run(s, { a: ok, b: ng });
     expect(s.phase).toBe('result');
-    expect(s.points).toEqual({ a: 1, b: 2, c: 0 });
+    expect(s.lives).toEqual({ a: 2, b: 1 });
+    expect(s.cleared).toEqual({ a: 1, b: 0 });
     s = rush.reduce(s, { type: 'next' }, 'system', 0);
     expect(s.stage).toBe(2);
-    // 未提出のまま時間切れ
+    s = run(s, { a: ok, b: ng });
+    s = rush.reduce(s, { type: 'next' }, 'system', 0);
+    // b は脱落、a だけで続行
+    expect(rush.alive(s)).toEqual(['a']);
+    expect(rush.reduce(s, { type: 'submit', result: ok }, 'b', 0)).toBe(s);
+    // 時間切れ（未提出）は失敗扱い
     s = rush.reduce(s, rush.schedule(s)!.action, 'system', 0);
-    expect(s.phase).toBe('result');
+    s = rush.reduce(s, { type: 'next' }, 'system', 0);
+    s = rush.reduce(s, rush.schedule(s)!.action, 'system', 0);
     s = rush.reduce(s, { type: 'next' }, 'system', 0);
     expect(s.phase).toBe('over');
+    expect(rush.ranking(s)).toEqual(['a', 'b']);
+  });
+
+  it('never repeats the same microgame twice in a row', () => {
+    let s = rush.init(P.slice(0, 1), 0, {});
+    for (let i = 0; i < 30; i++) {
+      const prev = s.round.microId;
+      s = run(s, { a: ok });
+      s = rush.reduce(s, { type: 'next' }, 'system', 0);
+      expect(s.round.microId).not.toBe(prev);
+    }
   });
 });

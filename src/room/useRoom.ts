@@ -143,6 +143,8 @@ export function useRoom(code: string, me: string, name: string, create: boolean)
       const msg = raw as WireMessage;
       if (!msg || typeof msg !== 'object' || !('t' in msg) || msg.from === me || leftRef.current) return;
       lastSeen.current.set(msg.from, Date.now());
+      // 新しく見えた人はすぐにオンライン扱いにする（開始直前の参加者が漏れないように）
+      if (!onlineRef.current.has(msg.from)) refreshOnline();
 
       switch (msg.t) {
         case 'state': {
