@@ -102,7 +102,9 @@ export class RoomEngine {
   private readonly departed = new Set<string>();
   private online: Set<string>;
   private lastRecvAt: number | null = null;
-  private heardOther = false;
+  // 状態を持つ端末（state・action・hb を送る端末）の声を聞いたか。状態待ちの端末は sync・join・bye しか送らない。
+  // スナップショットからの復元の条件に使う（QA-BUG-02：互いの sync・join を聞いただけの 2 人が、どちらも復元しなかった）
+  private heardStateful = false;
   private stallFired = false;
 
   private connectedAt = Number.NEGATIVE_INFINITY;
@@ -248,7 +250,8 @@ export class RoomEngine {
       this.emit();
       return;
     }
-    this.sendWire({ v: PROTOCOL_VERSION, t: 'hb', from: me });
+    // hb は状態を持つ端末だけが送る（状態待ちの端末の hb を、復元を止める「状態を持つ端末の声」と取り違えないように）
+    if (this.state) this.sendWire({ v: PROTOCOL_VERSION, t: 'hb', from: me });
     if (!this.state) {
       this.sendSync();
       this.sendJoin(true);
@@ -317,7 +320,7 @@ export class RoomEngine {
     // 何を受けても生存通知を兼ねる
     this.lastSeen.set(msg.from, now);
     this.lastRecvAt = now;
-    this.heardOther = true;
+    if (msg.t === 'state' || msg.t === 'action' || msg.t === 'hb') this.heardStateful = true;
     this.stallFired = false;
     switch (msg.t) {
       case 'state':
@@ -409,6 +412,11 @@ export class RoomEngine {
     if (!this.isHostNow()) {
       // ホストは sync を送らないので、ホストからの sync はリロードで状態を失った新しい engine。交代を始める（ADR-8）
       if (cur.hostId === from) this.departed.add(from);
+      // 状態待ちの端末に「状態を持つ参加者がいる」ことを知らせ、生きている部屋で復元させない（QA-BUG-02 の修正の裏側）。
+      // 直前に何か送っていれば、それで足りるので省く
+      else if (this.local() - this.lastSentAt >= this.t.SYNC_REPLY_MIN_MS && !this.terminal) {
+        this.sendWire({ v: PROTOCOL_VERSION, t: 'hb', from: this.d.me });
+      }
       return;
     }
     const now = this.local();
@@ -462,9 +470,11 @@ export class RoomEngine {
       this.sendSync();
       this.sendJoin(true);
     }
-    // 誰の声も聞こえないときだけ、保存しておいた状態から自分がホストとして復元する（AC-30）。
-    // 生きている部屋に古いスナップショットの世代を被せて巻き戻さないため
-    if (!this.heardOther && now - this.connectedAt >= this.t.RESTORE_AFTER_MS) {
+    // 状態を持つ端末の声が聞こえないときだけ、保存しておいた状態から自分がホストとして復元する（AC-30）。
+    // 生きている部屋に古いスナップショットの世代を被せて巻き戻さないため。
+    // 状態待ちの端末（同時にリロードした人）の sync・join は数えない。そういう端末どうしが同時に復元しても、
+    // 同じ世代の競合として compareStates（hostId の小さい方）で 1 人に収束する（QA-BUG-02）
+    if (!this.heardStateful && now - this.connectedAt >= this.t.RESTORE_AFTER_MS) {
       const snap = this.loadSnapshot();
       if (snap && snap.players.some((p) => p.id === this.d.me)) {
         this.commit(takeOverHost(snap, this.d.me, this.now()), true);

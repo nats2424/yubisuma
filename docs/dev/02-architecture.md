@@ -414,12 +414,13 @@ start():
     状態があるなら: sync（ホスト以外）/ 状態配信（ホスト）、再送処理
 tick（状態がないとき）:
   connected 中、SYNC_RETRY_MS ごとに sync + join
-  connected から RESTORE_AFTER_MS 経過 かつ 他の誰からも一度も受信していない
+  connected から RESTORE_AFTER_MS 経過 かつ 状態を持つ端末（state・action・hb の送り手）から一度も受信していない
     かつ スナップショットに自分がいる → takeOverHost(snapshot) で自分がホストとして復元（AC-30）
   connected から JOIN_TIMEOUT_MS 経過 → status = notfound
 ```
 
 - 「誰からも受信していない」ことを復元の条件にするのは、生きている部屋に古いスナップショットの世代（epoch+1）を被せて巻き戻さないため。ホストが生きていれば sync に必ず状態で答える。
+- （QA-BUG-02 で変更）状態待ちの端末は sync・join（・bye）しか送らない（`resume()` の hb も状態があるときだけ送る）。そこで「状態待ちの端末の声」は復元を止める理由に数えない。2 人が同時にリロードした部屋では両方が復元し、同じ世代の競合として `compareStates`（hostId の小さい方）で 1 人に収束する。状態を持つ参加者は、sync を受けたとき直前 `SYNC_REPLY_MIN_MS` に何も送っていなければ hb を送り、生きている部屋で復元させない。
 
 ### 5.2 状態の受信
 

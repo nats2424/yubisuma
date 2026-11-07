@@ -239,7 +239,7 @@ describe('QA: リロード', () => {
   });
 
   // 修正後に skip を外す（docs/dev/04-qa-report.md QA-BUG-02）
-  it.skip('QA-BUG-02: 2 人の部屋で 2 人ともほぼ同時にリロードしても、部屋は失われない', () => {
+  it('QA-BUG-02: 2 人の部屋で 2 人ともほぼ同時にリロードしても、部屋は失われない', () => {
     const room = readyRoom(['a', 'b']);
     start(room, 'a', 'counter');
     room.peers.a.engine.dispatch(inc);
