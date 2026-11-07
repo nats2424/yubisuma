@@ -10,8 +10,10 @@ import {
 import type { GameOptions, GamePlayer, Scheduled } from '../types';
 
 // 通信があるので指示表示はひとり用より少し長め
-const INTRO_MS = 1800;
-const RESULT_MS = 2200;
+const INTRO_MS = 2400;
+const RESULT_MS = 2500;
+// 全員そろってから結果画面へ移るまでの間（自分の判定を見る時間）
+const VERDICT_MS = 1600;
 
 export type RushState = {
   order: string[];
@@ -72,7 +74,11 @@ export const reduce = (s: RushState, a: RushAction, by: string, now: number): Ru
       const round = submitMicro(s.round, by, a.result);
       if (round === s.round) return s;
       const next = { ...s, round };
-      return alive(s).every((id) => id in round.results) ? finishStage(next, now) : next;
+      // 全員そろったら締め切りを早める（判定を見せてから結果へ）
+      if (alive(s).every((id) => id in round.results)) {
+        return { ...next, round: { ...round, endsAt: Math.min(round.endsAt, now + VERDICT_MS) } };
+      }
+      return next;
     }
     case 'timeout':
       if (by !== 'system' || s.phase !== 'play' || a.stage !== s.stage) return s;

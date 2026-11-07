@@ -25,9 +25,12 @@ describe('micro core', () => {
 describe('rush', () => {
   const ok = { score: 1, success: true };
   const ng = { score: 0, success: false };
+  // 全員提出 → 判定表示の後の締め切りで結果へ
   const run = (s: rush.RushState, results: Record<string, typeof ok>) => {
     for (const [id, r] of Object.entries(results)) s = rush.reduce(s, { type: 'submit', result: r }, id, 0);
-    return s;
+    expect(s.phase).toBe('play');
+    expect(s.round.endsAt).toBeLessThanOrEqual(1600);
+    return rush.reduce(s, rush.schedule(s)!.action, 'system', s.round.endsAt);
   };
 
   it('loses a life on failure and continues until everyone is out', () => {

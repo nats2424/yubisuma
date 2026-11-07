@@ -12,14 +12,19 @@ type Props = {
   existing?: MicroResult;
   label?: string;
   waitingMessage?: string;
+  // true なら判定表示を出したままにする（ひとり用：親が次へ進める）
+  holdVerdict?: boolean;
 };
 
+// 終わった直後、ゲーム画面に判定を重ねて見せる時間
+export const VERDICT_MS = 1500;
+
 // 瞬間ミニゲーム1本分の進行：指示表示 → プレイ → 結果待ち
-export default function MicroStage({ round, playing, now, onSubmit, existing, label, waitingMessage = 'みんなを待っています' }: Props) {
+export default function MicroStage({ round, playing, now, onSubmit, existing, label, waitingMessage = 'みんなを待っています', holdVerdict = false }: Props) {
   useTicker(100);
   const meta = microMeta(round.microId);
   const Game = MICRO_COMPONENTS[round.microId];
-  const [local, setLocal] = useState<{ seed: number; result: MicroResult } | null>(null);
+  const [local, setLocal] = useState<{ seed: number; result: MicroResult; at: number } | null>(null);
   const sent = useRef<number | null>(null);
   const submitRef = useRef(onSubmit);
   submitRef.current = onSubmit;
@@ -31,7 +36,7 @@ export default function MicroStage({ round, playing, now, onSubmit, existing, la
     (r: MicroResult) => {
       if (sent.current === round.seed) return;
       sent.current = round.seed;
-      setLocal({ seed: round.seed, result: r });
+      setLocal({ seed: round.seed, result: r, at: Date.now() });
       submitRef.current(r);
     },
     [round.seed],
@@ -61,10 +66,14 @@ export default function MicroStage({ round, playing, now, onSubmit, existing, la
     );
   }
 
-  if (myResult) {
+  // 直後はゲーム画面をそのまま残し、判定を重ねて表示（自分の結果が見えるように）
+  const showVerdict =
+    local?.seed === round.seed && (holdVerdict || Date.now() - local.at < VERDICT_MS) && playDuration.current?.seed === round.seed;
+
+  if (myResult && !showVerdict) {
     return (
       <div className={`micro-intro ${myResult.success ? 'ok' : 'ng'}`}>
-        <p className="micro-title">{myResult.success ? '成功！' : '失敗…'}</p>
+        <p className="micro-title">{myResult.success ? 'クリア！' : 'ミス！'}</p>
         {waitingMessage && <p className="micro-hint">{waitingMessage}</p>}
       </div>
     );
@@ -77,7 +86,14 @@ export default function MicroStage({ round, playing, now, onSubmit, existing, la
   return (
     <div className="micro-play">
       <p className="micro-title-sm">{meta.title}</p>
-      <Game key={round.seed} seed={round.seed} duration={playDuration.current.ms} onDone={done} />
+      <div className="micro-frozen">
+        <Game key={round.seed} seed={round.seed} duration={playDuration.current.ms} onDone={done} />
+        {showVerdict && myResult && (
+          <div className={`micro-verdict ${myResult.success ? 'ok' : 'ng'}`}>
+            <span>{myResult.success ? 'クリア！' : 'ミス！'}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

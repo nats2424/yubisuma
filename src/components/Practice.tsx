@@ -10,14 +10,13 @@ import {
   type MicroRound,
 } from '../games/micro/core';
 import Hearts from '../games/micro/Hearts';
-import MicroStage from '../games/micro/MicroStage';
+import MicroStage, { VERDICT_MS } from '../games/micro/MicroStage';
 import { Brand } from './Layout';
 import { Panel } from './ui';
 
 const now = () => Date.now();
 // ひとり用は通信がないのでテンポよく
-const INTRO_MS = 1300;
-const FLASH_MS = 900;
+const INTRO_MS = 2000;
 const BEST_KEY = 'sukima:challengeBest';
 
 const loadBest = () => {
@@ -37,7 +36,7 @@ const saveBest = (n: number) => {
 
 type Mode =
   | { kind: 'title' }
-  | { kind: 'challenge'; stage: number; lives: number; round: MicroRound; flash: MicroResult | null }
+  | { kind: 'challenge'; stage: number; lives: number; cleared: number; round: MicroRound }
   | { kind: 'over'; cleared: number; newBest: boolean }
   | { kind: 'single'; round: MicroRound; result: MicroResult | null };
 
@@ -51,16 +50,18 @@ export default function Practice() {
   }, []);
 
   const startChallenge = () =>
-    setMode({ kind: 'challenge', stage: 1, lives: LIVES, round: startMicroRound(nextMicroId(), now(), 1, INTRO_MS), flash: null });
+    setMode({ kind: 'challenge', stage: 1, lives: LIVES, cleared: 0, round: startMicroRound(nextMicroId(), now(), 1, INTRO_MS) });
 
   const onChallengeResult = (r: MicroResult) => {
     if (mode.kind !== 'challenge') return;
     const lives = r.success ? mode.lives : mode.lives - 1;
+    // 記録は実際にクリアしたゲームの数
+    const cleared = r.success ? mode.cleared + 1 : mode.cleared;
     const { stage, round } = mode;
-    setMode({ ...mode, lives, flash: r });
+    setMode({ ...mode, lives, cleared });
+    // ゲーム画面に判定を重ねて見せてから次へ
     timer.current = setTimeout(() => {
       if (lives <= 0) {
-        const cleared = stage - 1;
         const newBest = cleared > best;
         if (newBest) {
           setBest(cleared);
@@ -74,10 +75,10 @@ export default function Practice() {
         kind: 'challenge',
         stage: next,
         lives,
+        cleared,
         round: startMicroRound(nextMicroId(round.microId), now(), speedForStage(next), INTRO_MS),
-        flash: null,
       });
-    }, FLASH_MS);
+    }, VERDICT_MS);
   };
 
   const playSingle = (id: string) => setMode({ kind: 'single', round: startMicroRound(id, now(), 1, INTRO_MS), result: null });
@@ -88,23 +89,22 @@ export default function Practice() {
     body = (
       <div className="stack">
         <div className="rush-header">
-          <span className="stage-no">STAGE {mode.stage}</span>
+          <span className="stage-no">
+            STAGE {mode.stage}
+            <small className="muted"> クリア {mode.cleared}</small>
+          </span>
           <Hearts lives={mode.lives} max={LIVES} />
         </div>
-        {mode.flash ? (
-          <div className={`micro-intro ${mode.flash.success ? 'ok' : 'ng'}`}>
-            <p className="micro-title">{mode.flash.success ? 'クリア！' : mode.lives > 0 ? 'ミス！' : 'ゲームオーバー'}</p>
-          </div>
-        ) : (
-          <MicroStage
-            key={mode.round.seed}
-            round={mode.round}
-            playing
-            now={now}
-            onSubmit={onChallengeResult}
-            label={speedUp ? 'SPEED UP!' : `STAGE ${mode.stage}`}
-          />
-        )}
+        <MicroStage
+          key={mode.round.seed}
+          round={mode.round}
+          playing
+          now={now}
+          waitingMessage=""
+          holdVerdict
+          onSubmit={onChallengeResult}
+          label={speedUp ? 'SPEED UP!' : `STAGE ${mode.stage}`}
+        />
       </div>
     );
   } else if (mode.kind === 'over') {
@@ -136,6 +136,7 @@ export default function Practice() {
           now={now}
           label="練習"
           waitingMessage=""
+          holdVerdict
           onSubmit={(r) => setMode({ ...mode, result: r })}
         />
         {mode.result && (
