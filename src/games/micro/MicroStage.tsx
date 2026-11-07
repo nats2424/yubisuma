@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useTicker } from '../../components/ui';
 import { microMeta, type MicroResult, type MicroRound } from './core';
 import { MICRO_COMPONENTS } from './registry';
+import { TUNING } from './tuning';
 
 type Props = {
   round: MicroRound;
@@ -17,7 +18,7 @@ type Props = {
 };
 
 // 終わった直後、ゲーム画面に判定を重ねて見せる時間
-export const VERDICT_MS = 1500;
+export const VERDICT_MS = TUNING.stage.verdictMs;
 
 // 瞬間ミニゲーム1本分の進行：指示表示 → プレイ → 結果待ち
 export default function MicroStage({ round, playing, now, onSubmit, existing, label, waitingMessage = 'みんなを待っています', holdVerdict = false }: Props) {
@@ -81,7 +82,7 @@ export default function MicroStage({ round, playing, now, onSubmit, existing, la
 
   // 開始に遅れて画面を開いた場合は残り時間だけ遊ぶ
   if (playDuration.current?.seed !== round.seed) {
-    playDuration.current = { seed: round.seed, ms: Math.max(800, round.startAt + round.duration - t) };
+    playDuration.current = { seed: round.seed, ms: Math.max(TUNING.stage.minPlayMs, round.startAt + round.duration - t) };
   }
   return (
     <div className="micro-play">

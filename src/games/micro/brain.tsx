@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react';
 import { randInt, rng } from './core';
 import { useElapsed, useTimeUp, type MicroProps } from './hooks';
+import { TUNING } from './tuning';
+
+// 難易度の値は調整値（tuning.ts）から読む
+const COUNT = TUNING.micro.count.params;
+const COLOR = TUNING.micro.color.params;
+const MATH = TUNING.micro.math.params;
+const ODD = TUNING.micro.odd.params;
+const TIMING = TUNING.micro.timing.params;
 
 function TimeBar({ elapsed, duration }: { elapsed: number; duration: number }) {
   return (
@@ -23,13 +31,13 @@ const shuffleWith = <T,>(r: () => number, arr: T[]) => {
 export function Count({ seed, duration, onDone }: MicroProps) {
   const q = useMemo(() => {
     const r = rng(seed);
-    const n = randInt(r, 5, 12);
+    const n = randInt(r, COUNT.min, COUNT.max);
     const icon = ['⭐', '🍎', '🐟', '🎲', '🍺'][randInt(r, 0, 4)];
     const dots = Array.from({ length: n }, () => ({ x: 6 + r() * 82, y: 12 + r() * 70 }));
     const options = shuffleWith(r, [n, n + (r() < 0.5 ? 1 : -1), n + (r() < 0.5 ? 2 : -2)]);
     return { n, icon, dots, options };
   }, [seed]);
-  const showMs = Math.min(1600, duration * 0.3);
+  const showMs = Math.min(COUNT.showMaxMs, duration * COUNT.showRatio);
   const elapsed = useElapsed();
   const [answer, setAnswer] = useState<number | null>(null);
   useTimeUp(duration, () => ({ score: 0, success: false }), onDone);
@@ -86,7 +94,7 @@ export function ColorWord({ seed, duration, onDone }: MicroProps) {
   const [correct, setCorrect] = useState(0);
   const [miss, setMiss] = useState(0);
   const elapsed = useElapsed();
-  useTimeUp(duration, () => ({ score: Math.max(0, correct - miss), success: correct >= 3 && miss === 0 }), onDone);
+  useTimeUp(duration, () => ({ score: Math.max(0, correct - miss), success: correct >= COLOR.needCorrect && miss <= COLOR.maxMiss }), onDone);
   const q = questions[idx % questions.length];
   const pick = (i: number) => {
     if (i === q.ink) setCorrect((c) => c + 1);
@@ -129,7 +137,7 @@ export function MathQuiz({ seed, duration, onDone }: MicroProps) {
   const [correct, setCorrect] = useState(0);
   const [miss, setMiss] = useState(0);
   const elapsed = useElapsed();
-  useTimeUp(duration, () => ({ score: Math.max(0, correct - miss), success: correct >= 3 && correct > miss }), onDone);
+  useTimeUp(duration, () => ({ score: Math.max(0, correct - miss), success: correct >= MATH.needCorrect && correct > miss }), onDone);
   const q = questions[idx % questions.length];
   const pick = (v: number) => {
     if (v === q.ans) setCorrect((c) => c + 1);
@@ -170,7 +178,7 @@ export function Odd({ seed, duration, onDone }: MicroProps) {
   const q = useMemo(() => {
     const r = rng(seed);
     const [base, odd] = ODD_PAIRS[randInt(r, 0, ODD_PAIRS.length - 1)];
-    const size = 25;
+    const size = ODD.gridSize;
     return { base, odd, size, oddAt: randInt(r, 0, size - 1) };
   }, [seed]);
   const [state, setState] = useState<'play' | 'ok' | 'ng'>('play');
@@ -198,7 +206,7 @@ export function Odd({ seed, duration, onDone }: MicroProps) {
 
 // 3秒ぴったり：途中から時間が見えなくなる
 export function Timing({ duration, onDone }: MicroProps) {
-  const TARGET = 3000;
+  const TARGET = TIMING.targetMs;
   const [tapped, setTapped] = useState<number | null>(null);
   const elapsed = useElapsed(tapped === null);
   useTimeUp(duration, () => ({ score: 0, success: false }), onDone);
@@ -206,12 +214,12 @@ export function Timing({ duration, onDone }: MicroProps) {
     if (tapped !== null) return;
     setTapped(elapsed);
     const diff = Math.abs(elapsed - TARGET);
-    onDone({ score: Math.max(0, Math.round(3000 - diff)), success: diff <= 250 });
+    onDone({ score: Math.max(0, Math.round(TARGET - diff)), success: diff <= TIMING.toleranceMs });
   };
   const shown = tapped ?? elapsed;
   return (
     <div className="micro-stage center-col" onPointerDown={tap}>
-      <p className="micro-big mono">{tapped !== null || elapsed < 1000 ? (shown / 1000).toFixed(2) : '?.??'}</p>
+      <p className="micro-big mono">{tapped !== null || elapsed < TIMING.visibleMs ? (shown / 1000).toFixed(2) : '?.??'}</p>
       {tapped !== null && <p>{tapped > TARGET ? '+' : '−'}{(Math.abs(tapped - TARGET) / 1000).toFixed(2)}秒</p>}
       <p className="muted">画面のどこでもタップ</p>
     </div>

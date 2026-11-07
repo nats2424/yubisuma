@@ -14,12 +14,17 @@
 
 ## 構成
 
-- `src/lib/transport.ts` — 通信層（Supabase Broadcast / 未設定時は BroadcastChannel のデモモード）
-- `src/room/` — ルーム状態（`logic.ts` は純粋関数）と同期フック（`useRoom.ts`）
+- `src/lib/transport.ts` — 通信層。`Link`（1 回分の接続：Supabase Broadcast / 未設定時は BroadcastChannel のデモモード）と `ManagedTransport`（connecting / connected / reconnecting / failed の状態機械・リトライ・再接続）
+- `src/lib/clock.ts` — 時計とタイマーの抽象（本番は `realClock`、テストは疑似ネットワークの仮想時計）
+- `src/room/types.ts` — Client との契約型（`RoomHandle` / `RoomStatus` / `ConnectionStatus`）。変更には CTO の承認が要る
+- `src/room/logic.ts` — ルーム状態の純粋関数（`reduceRoom` / `acceptAction` / `chatBlockedUntil` など）
+- `src/room/protocol.ts` — 通信メッセージ（`v: 2`）の型と検証（`parseWireMessage` など）・レート制限の純粋関数
+- `src/room/engine.ts` — `RoomEngine`：受信処理・tick・ホスト引き継ぎ・同期要求・未確認アクションの再送・配信間引き。React に依存せず、通信・時計・ストレージを注入する
+- `src/room/useRoom.ts` — engine を作って購読する薄いフック（ブラウザイベントの配線だけ）
 - `src/games/<id>/{logic.ts, View.tsx}` — 各ゲーム。`src/games/registry.ts` に登録する
-- `src/games/micro/` — 瞬間ミニゲーム（ラッシュ・ひとり用チャレンジで使用）
+- `src/games/micro/` — 瞬間ミニゲーム（ラッシュ・ひとり用チャレンジで使用）。テンポ・難易度の数値は `tuning.ts` に集め、各ファイルに直書きしない（`validateTuning` の妥当性テストあり）
 - `src/components/` — 画面（Home / Room / Practice など）
-- `src/__tests__/` — テスト
+- `src/__tests__/` — テスト。`sim/` は疑似ネットワーク（`network.ts`：遅延・欠落・切断・スリープをシード付き乱数と仮想時刻で再現）と複数端末の組み立て（`harness.ts`）。通信のテストは実時間・`Date.now()`・`vi.useFakeTimers` を使わず、決定的に書く
 
 ## コーディング規約
 

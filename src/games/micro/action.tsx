@@ -1,6 +1,14 @@
 import { useMemo, useRef, useState, type PointerEvent } from 'react';
 import { randInt, rng } from './core';
 import { useElapsed, useTimeUp, type MicroProps } from './hooks';
+import { TUNING } from './tuning';
+
+// 難易度の値は調整値（tuning.ts）から読む
+const MASH = TUNING.micro.mash.params;
+const STOP = TUNING.micro.stop.params;
+const WHACK = TUNING.micro.whack.params;
+const DODGE = TUNING.micro.dodge.params;
+const BALLOON = TUNING.micro.balloon.params;
 
 function TimeBar({ elapsed, duration }: { elapsed: number; duration: number }) {
   return (
@@ -14,7 +22,7 @@ function TimeBar({ elapsed, duration }: { elapsed: number; duration: number }) {
 export function Mash({ duration, onDone }: MicroProps) {
   const [count, setCount] = useState(0);
   const elapsed = useElapsed();
-  const target = Math.round((duration / 1000) * 5);
+  const target = Math.round((duration / 1000) * MASH.tapsPerSec);
   useTimeUp(duration, () => ({ score: count, success: count >= target }), onDone);
   return (
     <div className="micro-stage center-col">
@@ -32,9 +40,9 @@ export function Mash({ duration, onDone }: MicroProps) {
 export function Stop({ seed, duration, onDone }: MicroProps) {
   const { zone, period } = useMemo(() => {
     const r = rng(seed);
-    return { zone: 15 + r() * 60, period: 900 + r() * 500 };
+    return { zone: 15 + r() * 60, period: STOP.periodMinMs + r() * (STOP.periodMaxMs - STOP.periodMinMs) };
   }, [seed]);
-  const ZONE_W = 12;
+  const ZONE_W = STOP.zoneWidthPct;
   const [stoppedAt, setStoppedAt] = useState<number | null>(null);
   const elapsed = useElapsed(stoppedAt === null);
   const phase = (elapsed % (period * 2)) / period;
@@ -64,14 +72,14 @@ export function Stop({ seed, duration, onDone }: MicroProps) {
 export function Whack({ seed, duration, onDone }: MicroProps) {
   const targets = useMemo(() => {
     const r = rng(seed);
-    const life = Math.max(600, duration / 6);
+    const life = Math.max(WHACK.targetLifeMinMs, duration / WHACK.lifeDivisor);
     const list: { t: number; x: number; y: number; life: number }[] = [];
     for (let t = 200; t < duration - 400; t += life * 0.6) list.push({ t, x: 8 + r() * 76, y: 10 + r() * 72, life });
     return list;
   }, [seed, duration]);
   const [hit, setHit] = useState<Set<number>>(new Set());
   const elapsed = useElapsed();
-  const need = Math.ceil(targets.length * 0.6);
+  const need = Math.ceil(targets.length * WHACK.needRatio);
   useTimeUp(duration, () => ({ score: hit.size, success: hit.size >= need }), onDone);
   return (
     <div className="micro-stage">
@@ -99,8 +107,8 @@ export function Dodge({ seed, duration, onDone }: MicroProps) {
   const rocks = useMemo(() => {
     const r = rng(seed);
     const list: { t: number; x: number; fall: number }[] = [];
-    const gap = Math.max(260, (380 * duration) / 6000);
-    for (let t = 300; t < duration - 600; t += gap * (0.6 + r() * 0.8)) list.push({ t, x: 4 + r() * 92, fall: 1100 + r() * 600 });
+    const gap = Math.max(DODGE.gapMinMs, (DODGE.gapBaseMs * duration) / TUNING.micro.dodge.baseMs);
+    for (let t = 300; t < duration - 600; t += gap * (0.6 + r() * 0.8)) list.push({ t, x: 4 + r() * 92, fall: DODGE.fallMinMs + r() * (DODGE.fallMaxMs - DODGE.fallMinMs) });
     return list;
   }, [seed, duration]);
   const [x, setX] = useState(50);
@@ -142,12 +150,12 @@ export function Dodge({ seed, duration, onDone }: MicroProps) {
 
 // ふくらませろ：割れる手前で止める（割れる回数は隠れている）
 export function Balloon({ seed, duration, onDone }: MicroProps) {
-  const limit = useMemo(() => randInt(rng(seed), 12, 28), [seed]);
+  const limit = useMemo(() => randInt(rng(seed), BALLOON.limitMin, BALLOON.limitMax), [seed]);
   const [taps, setTaps] = useState(0);
   const [stopped, setStopped] = useState(false);
   const popped = taps > limit;
   const elapsed = useElapsed(!stopped && !popped);
-  const result = () => ({ score: popped ? 0 : taps * 10, success: !popped && taps >= 10 });
+  const result = () => ({ score: popped ? 0 : taps * 10, success: !popped && taps >= BALLOON.minTaps });
   useTimeUp(duration, result, onDone);
 
   const pump = () => {

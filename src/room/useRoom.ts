@@ -1,280 +1,100 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { GAMES, DEFAULT_GAME } from '../games/registry';
-import { createTransport, type Transport } from '../lib/transport';
-import {
-  compareStates,
-  createRoom,
-  pickNextHost,
-  reduceRoom,
-  takeOverHost,
-  type RoomAction,
-  type RoomState,
-} from './logic';
-import type { RoomHandle, RoomStatus } from './types';
-
-// 通信メッセージ
-type WireMessage =
-  | { t: 'state'; from: string; state: RoomState; sentAt: number }
-  | { t: 'action'; from: string; action: RoomAction }
-  | { t: 'hb'; from: string }
-  | { t: 'bye'; from: string };
-
-const HEARTBEAT_MS = 2500;
-const OFFLINE_AFTER_MS = 9000;
-const HOST_RESYNC_MS = 5000;
-const JOIN_TIMEOUT_MS = 8000;
-// リロード時、他に誰もいなければ保存しておいた状態から部屋を復元するまでの待ち時間
-const RESTORE_AFTER_MS = 3500;
-
-const storageKey = (code: string) => `sukima:room:${code}`;
-const saveSnapshot = (s: RoomState) => {
-  try {
-    sessionStorage.setItem(storageKey(s.code), JSON.stringify(s));
-  } catch {
-    // 保存できなくても続行
-  }
-};
-const loadSnapshot = (code: string): RoomState | null => {
-  try {
-    const raw = sessionStorage.getItem(storageKey(code));
-    return raw ? (JSON.parse(raw) as RoomState) : null;
-  } catch {
-    return null;
-  }
-};
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { DEFAULT_GAME, GAMES } from '../games/registry';
+import { realClock } from '../lib/clock';
+import { createTransport } from '../lib/transport';
+import { RoomEngine, type EngineSnapshot, type KeyValueStore } from './engine';
+import type { RoomHandle } from './types';
 
 // 契約型は types.ts に置き、既存の import（Room.tsx など）のためにここからも再エクスポートする
 export type { RoomHandle, RoomStatus, ConnectionStatus } from './types';
 
-export function useRoom(code: string, me: string, name: string, create: boolean): RoomHandle {
-  const [state, setState] = useState<RoomState | null>(null);
-  const [status, setStatus] = useState<RoomStatus>('connecting');
-  const [online, setOnline] = useState<Set<string>>(() => new Set([me]));
-
-  const stateRef = useRef<RoomState | null>(null);
-  const transportRef = useRef<Transport | null>(null);
-  const lastSeen = useRef(new Map<string, number>());
-  const onlineRef = useRef<Set<string>>(new Set([me]));
-  // ルーム共通時計とのずれ（ホスト時刻 - 自分の時刻）。サンプル中の最大値＝遅延最小の推定を使う
-  const offsetSamples = useRef<number[]>([]);
-  const offset = useRef(0);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const leftRef = useRef(false);
-
-  const now = useCallback(() => Date.now() + offset.current, []);
-
-  const send = useCallback((msg: WireMessage) => transportRef.current?.send(msg), []);
-
-  const isHostNow = () => stateRef.current?.hostId === me;
-
-  // ゲームのタイマー（ホストのみ）
-  const reschedule = useCallback((s: RoomState) => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
-    if (s.hostId !== me || !s.game) return;
-    const scheduled = GAMES[s.game.id]?.schedule?.(s.game.state);
-    if (!scheduled) return;
-    const delay = Math.max(0, scheduled.at - now());
-    timer.current = setTimeout(() => applyAsHost({ type: 'gameSystem', action: scheduled.action }, me), delay);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me, now]);
-
-  const commit = useCallback(
-    (s: RoomState, broadcast: boolean) => {
-      stateRef.current = s;
-      setState(s);
-      saveSnapshot(s);
-      setStatus('ready');
-      if (broadcast) send({ t: 'state', from: me, state: s, sentAt: now() });
-      reschedule(s);
-    },
-    [me, now, reschedule, send],
-  );
-
-  function applyAsHost(action: RoomAction, by: string) {
-    const cur = stateRef.current;
-    if (!cur || cur.hostId !== me) return;
-    const next = reduceRoom(cur, action, by, now(), GAMES);
-    if (next === cur) return;
-    commit({ ...next, version: next.version + 1 }, true);
-  }
-
-  const dispatch = useCallback(
-    (action: RoomAction) => {
-      if (isHostNow()) applyAsHost(action, me);
-      else send({ t: 'action', from: me, action });
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [me, send],
-  );
-
-  const refreshOnline = useCallback(() => {
-    const t = Date.now();
-    const ids = new Set<string>([me]);
-    lastSeen.current.forEach((seen, id) => {
-      if (t - seen < OFFLINE_AFTER_MS) ids.add(id);
-    });
-    const prev = onlineRef.current;
-    const changed = ids.size !== prev.size || [...ids].some((id) => !prev.has(id));
-    if (changed) {
-      onlineRef.current = ids;
-      setOnline(ids);
+// リロード時の復元用スナップショットはタブごと（sessionStorage）。使えない環境でも動作は続ける
+const sessionStore: KeyValueStore = {
+  get: (key) => {
+    try {
+      return sessionStorage.getItem(key);
+    } catch {
+      return null;
     }
-    return ids;
-  }, [me]);
+  },
+  set: (key, value) => {
+    try {
+      sessionStorage.setItem(key, value);
+    } catch {
+      // 保存できなくても続行
+    }
+  },
+};
+
+const noop = () => {};
+const noopSubscribe = () => noop;
+
+// 同期処理の中身は RoomEngine（engine.ts）にあり、ここは engine の生成・購読とブラウザイベントの配線だけを行う
+export function useRoom(code: string, me: string, name: string, create: boolean): RoomHandle {
+  const [engine, setEngine] = useState<RoomEngine | null>(null);
 
   useEffect(() => {
-    const transport = createTransport(code);
-    transportRef.current = transport;
-    let disposed = false;
-    leftRef.current = false;
-    const joinedAt = Date.now();
-
-    transport.onMessage((raw) => {
-      const msg = raw as WireMessage;
-      if (!msg || typeof msg !== 'object' || !('t' in msg) || msg.from === me || leftRef.current) return;
-      lastSeen.current.set(msg.from, Date.now());
-      // 新しく見えた人はすぐにオンライン扱いにする（開始直前の参加者が漏れないように）
-      if (!onlineRef.current.has(msg.from)) refreshOnline();
-
-      switch (msg.t) {
-        case 'state': {
-          const cur = stateRef.current;
-          if (cur && compareStates(msg.state, cur) <= 0) {
-            // 自分の方が新しいホスト状態なら上書きし返す
-            if (cur.hostId === me && compareStates(cur, msg.state) > 0) {
-              send({ t: 'state', from: me, state: cur, sentAt: now() });
-            }
-            return;
-          }
-          if (msg.state.hostId === msg.from) {
-            if (cur?.hostId !== msg.from) offsetSamples.current = [];
-            offsetSamples.current = [...offsetSamples.current, msg.sentAt - Date.now()].slice(-10);
-            offset.current = Math.max(...offsetSamples.current);
-          }
-          commit(msg.state, false);
-          if (!msg.state.players.some((p) => p.id === me)) {
-            // 自分がいない状態＝追い出された or まだ参加処理前
-            if (cur?.players.some((p) => p.id === me)) {
-              leftRef.current = true;
-              setStatus('left');
-            }
-            else send({ t: 'action', from: me, action: { type: 'join', name } });
-          }
-          break;
-        }
-        case 'action':
-          if (isHostNow()) applyAsHost(msg.action, msg.from);
-          break;
-        case 'hb':
-          // 状態を持っていない新規参加者向けにホストは即座に状態を返す
-          if (isHostNow() && stateRef.current && !stateRef.current.players.some((p) => p.id === msg.from)) {
-            send({ t: 'state', from: me, state: stateRef.current, sentAt: now() });
-          }
-          break;
-        case 'bye':
-          lastSeen.current.delete(msg.from);
-          refreshOnline();
-          break;
-      }
+    const e = new RoomEngine({
+      code,
+      me,
+      name,
+      create,
+      transport: createTransport(code),
+      clock: realClock,
+      storage: sessionStore,
+      games: GAMES,
+      defaultGame: DEFAULT_GAME,
     });
-
-    transport.ready
-      .then(() => {
-        if (disposed) return;
-        if (create) {
-          commit(createRoom(code, { id: me, name }, DEFAULT_GAME), true);
-        } else {
-          send({ t: 'action', from: me, action: { type: 'join', name } });
-        }
-        send({ t: 'hb', from: me });
-      })
-      .catch(() => !disposed && setStatus('failed'));
-
-    let lastResync = Date.now();
-    let lastHeartbeat = 0;
-    const tick = setInterval(() => {
-      if (leftRef.current) return;
-      const t = Date.now();
-      if (t - lastHeartbeat >= HEARTBEAT_MS) {
-        send({ t: 'hb', from: me });
-        lastHeartbeat = t;
-      }
-      const ids = refreshOnline();
-      const cur = stateRef.current;
-
-      if (!cur) {
-        const snapshot = t - joinedAt > RESTORE_AFTER_MS ? loadSnapshot(code) : null;
-        if (snapshot?.players.some((p) => p.id === me)) {
-          commit(takeOverHost(snapshot, me, now()), true);
-        } else if (t - joinedAt > JOIN_TIMEOUT_MS) setStatus((s) => (s === 'connecting' ? 'notfound' : s));
-        else if (t - lastHeartbeat < 1000) send({ t: 'action', from: me, action: { type: 'join', name } });
-        return;
-      }
-      if (cur.hostId === me) {
-        if (t - lastResync > HOST_RESYNC_MS) {
-          send({ t: 'state', from: me, state: cur, sentAt: now() });
-          lastResync = t;
-        }
-        return;
-      }
-      // ホストが落ちたら、参加順で最も古いオンラインのメンバーが引き継ぐ
-      const hostSeen = lastSeen.current.get(cur.hostId) ?? 0;
-      if (t - joinedAt > OFFLINE_AFTER_MS && t - hostSeen > OFFLINE_AFTER_MS && cur.players.some((p) => p.id === me)) {
-        if (pickNextHost(cur, ids, cur.hostId) === me) {
-          commit(takeOverHost(cur, me, now()), true);
-        }
-      }
-    }, 500);
+    e.start();
+    setEngine(e);
 
     const onVisible = () => {
-      if (document.visibilityState === 'visible') send({ t: 'hb', from: me });
+      if (document.visibilityState === 'visible') e.resume();
     };
-    const onPageHide = () => send({ t: 'bye', from: me });
+    const onPageShow = () => e.resume();
+    const onOnline = () => e.setNetworkOnline(true);
+    const onOffline = () => e.setNetworkOnline(false);
+    const onPageHide = () => e.pageHide();
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onPageShow);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
     window.addEventListener('pagehide', onPageHide);
-
     return () => {
-      disposed = true;
-      clearInterval(tick);
-      if (timer.current) clearTimeout(timer.current);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onPageShow);
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
       window.removeEventListener('pagehide', onPageHide);
-      send({ t: 'bye', from: me });
-      transport.close();
-      transportRef.current = null;
-      stateRef.current = null;
+      e.dispose();
+      setEngine((cur) => (cur === e ? null : cur));
     };
+    // 名前の変更では作り直さない（入室時の名前だけを使う。旧実装と同じ）
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, me, create]);
 
-  const leave = useCallback(() => {
-    const cur = stateRef.current;
-    if (cur) {
-      if (cur.hostId === me) {
-        // ホストが抜ける場合は、オンラインの人にホストを譲ってから抜ける
-        const left = reduceRoom(cur, { type: 'leave' }, me, now(), GAMES);
-        const nextHost = pickNextHost(left, onlineRef.current, me) ?? left.hostId;
-        send({ t: 'state', from: me, state: { ...left, hostId: nextHost, epoch: left.epoch + 1, version: left.version + 1 }, sentAt: now() });
-      } else {
-        send({ t: 'action', from: me, action: { type: 'leave' } });
-      }
-    }
-    leftRef.current = true;
-    if (timer.current) clearTimeout(timer.current);
-    setStatus('left');
-  }, [me, now, send]);
+  // engine ができる前（最初の描画）に返す値。変化しないよう me ごとに固定する
+  const initial = useMemo<EngineSnapshot>(
+    () => ({ status: 'connecting', connection: 'connecting', state: null, isHost: false, online: new Set([me]) }),
+    [me],
+  );
+  const subscribe = useCallback((cb: () => void) => (engine ? engine.subscribe(cb) : noopSubscribe()), [engine]);
+  const getSnapshot = useCallback(() => (engine ? engine.getSnapshot() : initial), [engine, initial]);
+  const snap = useSyncExternalStore(subscribe, getSnapshot);
 
-  // Phase 0 の暫定実装：ページを読み直して最初から接続し直す。
-  // Phase 1（B-18）で engine.retry() に差し替え、読み直さずに再接続する
-  const retry = useCallback(() => {
-    location.reload();
-  }, []);
-
-  const isHost = state?.hostId === me;
-  return useMemo(
-    // 接続状態の追跡は Phase 1 の ManagedTransport で入れる。それまでは常に connected と報告する
-    () => ({ status, connection: 'connected' as const, state, me, isHost, online, dispatch, now, leave, retry }),
-    [status, state, me, isHost, online, dispatch, now, leave, retry],
+  return useMemo<RoomHandle>(
+    () => ({
+      status: snap.status,
+      connection: snap.connection,
+      state: snap.state,
+      me,
+      isHost: snap.isHost,
+      online: snap.online,
+      dispatch: engine?.dispatch ?? noop,
+      now: engine?.now ?? Date.now,
+      leave: engine?.leave ?? noop,
+      retry: engine?.retry ?? noop,
+    }),
+    [snap, me, engine],
   );
 }

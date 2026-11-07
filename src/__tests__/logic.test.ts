@@ -4,16 +4,21 @@ import * as majority from '../games/majority/logic';
 import * as reaction from '../games/reaction/logic';
 import * as wordwolf from '../games/wordwolf/logic';
 import * as yubisuma from '../games/yubisuma/logic';
+import type { GameDef } from '../games/types';
 import {
+  acceptAction,
+  CHAT_MAX_LEN,
   CHAT_RATE,
   chatBlockedUntil,
   compareStates,
   createRoom,
   pickNextHost,
   reduceRoom,
+  START_GUARD_MS,
   takeOverHost,
   type RoomState,
 } from '../room/logic';
+import { MAX_STATE_BYTES } from '../room/protocol';
 
 const P = [
   { id: 'a', name: 'A' },
@@ -176,5 +181,150 @@ describe('chatBlockedUntil', () => {
     s = say(s, 'a', 1250);
     expect(chatBlockedUntil(s, 'a', 1300)).toBe(0);
     expect(chatBlockedUntil(s, 'b', 1300)).toBe(4000);
+  });
+});
+
+describe('acceptAction / 連番と重複除去（AC-12・13・15）', () => {
+  const room = (): RoomState => {
+    let s = createRoom('ABCD', P[0], 'reaction');
+    s = reduceRoom(s, { type: 'join', name: 'B' }, 'b', 0, GAMES);
+    s = reduceRoom(s, { type: 'join', name: 'C' }, 'c', 0, GAMES);
+    return s;
+  };
+  const chat = (text: string) => ({ type: 'chat' as const, text });
+
+  it('createRoom は acks を空で持つ', () => {
+    expect(room().acks).toEqual({});
+  });
+
+  it('AC-12: 同じ seq が 3 回届いても適用は 1 回だけ', () => {
+    let s = room();
+    for (let i = 0; i < 3; i++) s = acceptAction(s, 'b', 1, chat('hi'), 1000 + i, GAMES) ?? s;
+    expect(s.chat.filter((m) => m.by === 'b')).toHaveLength(1);
+    expect(s.acks.b).toBe(1);
+  });
+
+  it('AC-13: seq 5 が seq 4 より先に届いたら、後から来た 4 は捨てる', () => {
+    let s = room();
+    s = acceptAction(s, 'b', 5, chat('five'), 1000, GAMES)!;
+    expect(s.acks.b).toBe(5);
+    expect(acceptAction(s, 'b', 4, chat('four'), 1100, GAMES)).toBeNull();
+    expect(s.chat.filter((m) => m.by === 'b').map((m) => m.text)).toEqual(['five']);
+  });
+
+  it('reduce で変化がなくても受け付けたら acks は進む', () => {
+    const s = room();
+    // ホスト以外の selectGame は無視されるが、seq は処理済みになる（参加者が再送をやめられるように）
+    const next = acceptAction(s, 'b', 1, { type: 'selectGame', gameId: 'rush' }, 0, GAMES)!;
+    expect(next.selectedGame).toBe(s.selectedGame);
+    expect(next.acks.b).toBe(1);
+  });
+
+  it('非メンバー・gameSystem・不正な seq は null', () => {
+    const s = room();
+    expect(acceptAction(s, 'z', 1, chat('x'), 0, GAMES)).toBeNull();
+    expect(acceptAction(s, 'b', 1, { type: 'gameSystem', action: {} }, 0, GAMES)).toBeNull();
+    expect(acceptAction(s, 'b', 0, chat('x'), 0, GAMES)).toBeNull();
+    expect(acceptAction(s, 'b', 1.5, chat('x'), 0, GAMES)).toBeNull();
+    expect(acceptAction(s, '__proto__', 1, chat('x'), 0, GAMES)).toBeNull();
+  });
+
+  it('AC-15: ホスト交代後も処理済み seq が引き継がれ、再送されても二重適用しない', () => {
+    let s = room();
+    s = acceptAction(s, 'c', 1, chat('one'), 1000, GAMES)!;
+    s = acceptAction(s, 'c', 2, chat('two'), 1100, GAMES)!;
+    // 旧ホスト a が落ちて b が引き継ぐ
+    const taken = takeOverHost(s, 'b', 2000);
+    expect(taken.acks).toEqual({ c: 2 });
+    // c が未確認だと思って再送した seq 2 は新ホストでも捨てられる
+    expect(acceptAction(taken, 'c', 2, chat('two'), 2100, GAMES)).toBeNull();
+    expect(acceptAction(taken, 'c', 3, chat('three'), 2200, GAMES)?.acks.c).toBe(3);
+  });
+
+  it('leave / kick で acks から消え、leave の重複は捨てる', () => {
+    let s = room();
+    s = acceptAction(s, 'b', 1, chat('x'), 0, GAMES)!;
+    s = acceptAction(s, 'c', 1, chat('y'), 0, GAMES)!;
+    s = acceptAction(s, 'b', 2, { type: 'leave' }, 10, GAMES)!;
+    expect(s.players.map((p) => p.id)).toEqual(['a', 'c']);
+    expect(s.acks).toEqual({ c: 1 });
+    expect(acceptAction(s, 'b', 2, { type: 'leave' }, 20, GAMES)).toBeNull();
+    s = reduceRoom(s, { type: 'kick', target: 'c' }, 'a', 30, GAMES);
+    expect(s.acks).toEqual({});
+  });
+});
+
+describe('ホストの保護（AC-04・20・21）', () => {
+  const boom: GameDef<{ n: number }, { type: string }> = {
+    id: 'boom',
+    name: 'boom',
+    emoji: '',
+    tagline: '',
+    rules: [],
+    minPlayers: 1,
+    maxPlayers: 10,
+    minutes: '',
+    category: 'quick',
+    init: () => ({ n: 0 }),
+    reduce: (s, a) => {
+      if (a.type === 'boom') throw new Error('boom');
+      return { n: s.n + 1 };
+    },
+    View: () => null,
+  };
+  const games = { ...GAMES, boom };
+
+  it('AC-04: ゲームの reduce が例外を投げても状態を変えず、その後の正常なアクションは処理される', () => {
+    let s = createRoom('ABCD', P[0], 'boom');
+    s = reduceRoom(s, { type: 'startGame', online: ['a'] }, 'a', 0, games);
+    const before = s;
+    expect(reduceRoom(s, { type: 'game', action: { type: 'boom' } }, 'a', 10, games)).toBe(before);
+    s = reduceRoom(s, { type: 'game', action: { type: 'ok' } }, 'a', 20, games);
+    expect(s.game?.state).toEqual({ n: 1 });
+  });
+
+  it('AC-20: 3 秒以内に 5 件チャットしても追加されるのは 3 件まで', () => {
+    let s = createRoom('ABCD', P[0], 'reaction');
+    for (let i = 0; i < 5; i++) s = reduceRoom(s, { type: 'chat', text: `m${i}` }, 'a', 1000 + i * 500, GAMES);
+    expect(s.chat.filter((m) => m.by === 'a').map((m) => m.text)).toEqual(['m0', 'm1', 'm2']);
+    // 窓を抜ければまた送れる
+    s = reduceRoom(s, { type: 'chat', text: 'later' }, 'a', 4000, GAMES);
+    expect(s.chat.filter((m) => m.by === 'a')).toHaveLength(4);
+  });
+
+  it('AC-21: 「もう一度」を 1 秒以内に 2 回押しても再初期化は 1 回だけ', () => {
+    let s = createRoom('ABCD', P[0], 'reaction');
+    s = reduceRoom(s, { type: 'join', name: 'B' }, 'b', 0, GAMES);
+    s = reduceRoom(s, { type: 'startGame', online: ['a', 'b'] }, 'a', 0, GAMES);
+    expect(s.game?.startedAt).toBe(0);
+    // ゲーム終了後に「もう一度」を 2 回
+    s = reduceRoom(s, { type: 'startGame', online: ['a', 'b'] }, 'a', 60000, GAMES);
+    expect(s.game?.startedAt).toBe(60000);
+    expect(reduceRoom(s, { type: 'startGame', online: ['a', 'b'] }, 'a', 60800, GAMES)).toBe(s);
+    const later = reduceRoom(s, { type: 'startGame', online: ['a', 'b'] }, 'a', 60000 + START_GUARD_MS, GAMES);
+    expect(later.game?.startedAt).toBe(60000 + START_GUARD_MS);
+  });
+});
+
+describe('AC-22: 状態のサイズ', () => {
+  it('10 人・チャット 60 件（各 200 文字）・大富豪 6 人・acks 10 件の JSON が 64KB 以下', () => {
+    const players = Array.from({ length: 10 }, (_, i) => ({ id: `player-${i}-${'x'.repeat(30)}`, name: 'あいうえおかきくけこ' }));
+    let s = createRoom('ABCD', players[0], 'daifugo');
+    for (const p of players.slice(1)) s = reduceRoom(s, { type: 'join', name: p.name }, p.id, 0, GAMES);
+    expect(s.players).toHaveLength(10);
+    s = reduceRoom(s, { type: 'startGame', online: players.slice(0, 6).map((p) => p.id) }, players[0].id, 0, GAMES);
+    expect(s.game?.id).toBe('daifugo');
+    expect(s.game?.players).toHaveLength(6);
+    const text = 'あ'.repeat(CHAT_MAX_LEN);
+    s = {
+      ...s,
+      chat: Array.from({ length: 60 }, (_, i) => {
+        const p = players[i % 10];
+        return { id: `${p.id}_${1700000000000 + i}_${i}`, by: p.id, name: p.name, text, at: 1700000000000 + i };
+      }),
+      acks: Object.fromEntries(players.map((p) => [p.id, 123456])),
+    };
+    const bytes = new TextEncoder().encode(JSON.stringify(s)).length;
+    expect(bytes).toBeLessThanOrEqual(MAX_STATE_BYTES);
   });
 });
