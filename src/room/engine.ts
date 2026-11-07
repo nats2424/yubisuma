@@ -12,6 +12,7 @@ import {
   ackOf,
   compareStates,
   createRoom,
+  hasKnownGames,
   isImplausibleJump,
   MAX_ROOM_PLAYERS,
   pickNextHost,
@@ -347,6 +348,8 @@ export class RoomEngine {
   private onState(msg: Extract<WireMessage, { t: 'state' }>) {
     const cur = this.state;
     const { me } = this.d;
+    // 登録にないゲームを指す状態は採用しない（SEC-04）。比較より前に見て、ホストの反論の対象にもしない
+    if (!hasKnownGames(msg.state, this.d.games)) return;
     if (cur && compareStates(msg.state, cur) <= 0) {
       // 古いホストからの状態には、自分の方が新しいホストなら反論する（E-07）
       if (this.isHostNow() && compareStates(cur, msg.state) > 0) this.requestBroadcast();
@@ -676,7 +679,9 @@ export class RoomEngine {
   private loadSnapshot(): RoomState | null {
     try {
       const raw = this.d.storage.get(snapshotKey(this.d.code));
-      return raw ? parseRoomState(JSON.parse(raw), this.d.code) : null;
+      const snap = raw ? parseRoomState(JSON.parse(raw), this.d.code) : null;
+      // 古い版で保存した、今の登録にないゲームの状態は復元しない（SEC-04）
+      return snap && hasKnownGames(snap, this.d.games) ? snap : null;
     } catch {
       return null;
     }

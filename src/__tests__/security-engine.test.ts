@@ -105,7 +105,7 @@ describe('SEC-01: 巨大な epoch / version の偽の状態 1 通で部屋が壊
 });
 
 describe('SEC-04: 未知のゲーム ID を含む状態', () => {
-  it.skip('SEC-04: selectedGame / game.id が登録にない（constructor・__proto__ を含む）状態は採用しない', () => {
+  it('SEC-04: selectedGame / game.id が登録にない（constructor・__proto__ を含む）状態は採用しない', () => {
     // 現状：parseRoomState は文字列であることしか見ないので採用され、Room.tsx の Lobby が GAMES[selectedGame].id で
     // 例外を投げ、エラー境界がないため全員の画面が真っ白になる（デプロイ直後の版ずれでも起こる）
     const { room, send, peers } = attackedRoom();

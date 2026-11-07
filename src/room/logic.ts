@@ -86,6 +86,14 @@ export const VERSION_JUMP_MAX = 1_000_000;
 export const isImplausibleJump = (next: RoomState, cur: RoomState): boolean =>
   next.epoch > cur.epoch + EPOCH_JUMP_MAX || next.version > cur.version + VERSION_JUMP_MAX;
 
+// 状態が参照するゲーム（selectedGame・game.id）がすべてこの端末の登録にあるか（SEC-04）。
+// 登録にない ID（constructor・__proto__ などを含む）の状態を採用すると、画面が GAMES[id] を引けず全員が真っ白になる。
+// 悪意だけでなくデプロイ直後の版ずれ（新しい版のタブが新ゲームを選ぶ）でも起こるので、採用前に確かめる。
+// 継承プロパティを拾わないよう hasOwnProperty で見る
+const hasGame = (games: GameRegistry, id: string): boolean => Object.prototype.hasOwnProperty.call(games, id);
+export const hasKnownGames = (state: RoomState, games: GameRegistry): boolean =>
+  hasGame(games, state.selectedGame) && (state.game === null || hasGame(games, state.game.id));
+
 let msgSeq = 0;
 const systemMessage = (text: string, now: number): ChatMessage => ({
   id: `s${now}_${msgSeq++}`,
