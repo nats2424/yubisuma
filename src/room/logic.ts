@@ -75,6 +75,17 @@ export const compareStates = (a: RoomState, b: RoomState): number => {
   return a.version - b.version;
 };
 
+// 今の状態から世代・版がこれより大きく飛んだ状態は採用しない（SEC-01）。
+// 巨大な epoch / version（MAX_SAFE_INTEGER など）の偽の状態 1 通を採用すると、以後の正しい状態がすべて「古い」扱いになるか、
+// 次の +1 が安全な整数を超えて全員に捨てられ、攻撃者が去っても部屋が戻らないため。
+// 絶対値の上限では「上限ちょうど」を送られると同じことが起きるので、相対で見る。
+// 版は世代が変わっても引き継がれる（takeOverHost は version + 1）ので、世代に関係なく比べる。
+// 上限は、長く離れていた参加者が追いつけなくなることのないよう十分大きく取る（5 件/秒で 1 日 ≒ 43 万版）
+export const EPOCH_JUMP_MAX = 1000;
+export const VERSION_JUMP_MAX = 1_000_000;
+export const isImplausibleJump = (next: RoomState, cur: RoomState): boolean =>
+  next.epoch > cur.epoch + EPOCH_JUMP_MAX || next.version > cur.version + VERSION_JUMP_MAX;
+
 let msgSeq = 0;
 const systemMessage = (text: string, now: number): ChatMessage => ({
   id: `s${now}_${msgSeq++}`,

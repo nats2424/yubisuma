@@ -78,7 +78,7 @@ describe('なりすまし・権限（S-01）', () => {
 });
 
 describe('SEC-01: 巨大な epoch / version の偽の状態 1 通で部屋が壊れる', () => {
-  it.skip('SEC-01: version = MAX_SAFE_INTEGER の偽の状態のあとも、ホストの変更が参加者に届く', () => {
+  it('SEC-01: version = MAX_SAFE_INTEGER の偽の状態のあとも、ホストの変更が参加者に届く', () => {
     // 現状：全員（ホストも）が偽の状態を採用し、ホストの次の version（MAX_SAFE_INTEGER + 1）が
     // parseRoomState の「安全な整数」検査で全員に捨てられる。以後この部屋の変更は誰にも届かない
     const { room, send, peers } = attackedRoom();
@@ -91,7 +91,7 @@ describe('SEC-01: 巨大な epoch / version の偽の状態 1 通で部屋が壊
     expect(stateOf(peers.c).chat.at(-1)?.text).toBe('まだ届く？');
   });
 
-  it.skip('SEC-01: epoch = MAX_SAFE_INTEGER の偽の状態のあとも、ホスト交代で全員が新ホストにそろう', () => {
+  it('SEC-01: epoch = MAX_SAFE_INTEGER の偽の状態のあとも、ホスト交代で全員が新ホストにそろう', () => {
     // 現状：ホストが去ると引き継いだ人の epoch が MAX_SAFE_INTEGER + 1 になり、他の全員に捨てられて部屋が割れる
     const { room, send, peers } = attackedRoom();
     const cur = stateOf(peers.a);

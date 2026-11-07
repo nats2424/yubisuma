@@ -12,6 +12,7 @@ import {
   ackOf,
   compareStates,
   createRoom,
+  isImplausibleJump,
   MAX_ROOM_PLAYERS,
   pickNextHost,
   reduceRoom,
@@ -349,6 +350,11 @@ export class RoomEngine {
     if (cur && compareStates(msg.state, cur) <= 0) {
       // 古いホストからの状態には、自分の方が新しいホストなら反論する（E-07）
       if (this.isHostNow() && compareStates(cur, msg.state) > 0) this.requestBroadcast();
+      return;
+    }
+    if (cur && isImplausibleJump(msg.state, cur)) {
+      // 世代・版が大きく飛んだ偽の状態は捨て、自分がホストなら正しい状態を配り直す（SEC-01）
+      if (this.isHostNow()) this.requestBroadcast();
       return;
     }
     if (msg.state.hostId === msg.from) {
