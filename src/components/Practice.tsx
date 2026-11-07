@@ -1,22 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  LIVES,
-  MICRO_META,
-  microMeta,
-  nextMicroId,
-  speedForStage,
-  startMicroRound,
-  type MicroResult,
-  type MicroRound,
-} from '../games/micro/core';
+import { MICRO_META, microMeta, nextMicroId, startMicroRound, type MicroResult, type MicroRound } from '../games/micro/core';
 import Hearts from '../games/micro/Hearts';
-import MicroStage, { VERDICT_MS } from '../games/micro/MicroStage';
+import MicroStage from '../games/micro/MicroStage';
+import { speedForStage, speedUpRuleText, TUNING } from '../games/micro/tuning';
 import { Brand } from './Layout';
 import { Panel } from './ui';
 
 const now = () => Date.now();
-// ひとり用は通信がないのでテンポよく
-const INTRO_MS = 2000;
+// 調整値は tuning.ts に集約している（AC-41）。ひとり用は通信がないので開始前表示を短めにしてある
+const INTRO_MS = TUNING.solo.introMs;
+const LIVES = TUNING.lives.default;
+const VERDICT_MS = TUNING.stage.verdictMs;
 const BEST_KEY = 'sukima:challengeBest';
 
 const loadBest = () => {
@@ -158,7 +152,7 @@ export default function Practice() {
           <p className="micro-label">ひとりでチャレンジ</p>
           <h1>どこまで行ける？</h1>
           <p className="muted">
-            数秒のミニゲームが次々に出ます。失敗するとライフが減り、{LIVES}回ミスでゲームオーバー。5ステージごとにスピードアップ。
+            数秒のミニゲームが次々に出ます。失敗するとライフが減り、{LIVES}回ミスでゲームオーバー。{speedUpRuleText()}。
           </p>
           <button className="btn primary challenge-start" onClick={startChallenge}>
             スタート
