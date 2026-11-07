@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { rng } from '../games/micro/core';
 import { GAMES } from '../games/registry';
 import { acceptAction, ackOf, createRoom, reduceRoom, type RoomAction, type RoomState } from '../room/logic';
-import { parseRoomAction, parseRoomState, parseWireMessage } from '../room/protocol';
+import { MAX_GAME_STATE_DEPTH, parseRoomAction, parseRoomState, parseWireMessage } from '../room/protocol';
 
 const CODE = 'ABCD';
 // a がホスト、b・c が参加者の部屋
@@ -143,6 +143,15 @@ describe('壊れた値の大量投入（S-02）', () => {
     if (parsed?.t !== 'action') return;
     const next = acceptAction(s0, 'b', 1, parsed.action, 10, GAMES);
     expect(next?.game?.state).toBe(s0.game?.state);
+  });
+
+  it('SEC-05: game.state の入れ子が上限（MAX_GAME_STATE_DEPTH）を超える状態は捨て、上限以内は受け付ける', () => {
+    const s0 = reduceRoom(room(), { type: 'startGame', online: ['a', 'b', 'c'] }, 'a', 0, GAMES);
+    const withState = (state: unknown) => ({ ...s0, game: { ...s0.game!, state } });
+    expect(parseRoomState(withState(deep(100_000)), CODE)).toBeNull();
+    expect(parseRoomState(withState(deep(MAX_GAME_STATE_DEPTH + 1)), CODE)).toBeNull();
+    expect(parseRoomState(withState(deep(MAX_GAME_STATE_DEPTH - 1)), CODE)).not.toBeNull();
+    expect(parseRoomState(s0, CODE)).not.toBeNull();
   });
 
   it('players・chat・acks・startGame.online の件数上限を超えた状態・アクションは捨てる', () => {

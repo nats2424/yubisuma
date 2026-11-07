@@ -665,12 +665,13 @@ export class RoomEngine {
     this.cancelSave?.();
     this.cancelSave = null;
     this.lastSaveAt = this.local();
-    if (this.state && this.terminal !== 'left') this.safeSet(JSON.stringify(this.state));
+    if (this.state && this.terminal !== 'left') this.safeSet(() => JSON.stringify(this.state));
   }
 
-  private safeSet(value: string) {
+  // 文字列化も try の中で行う（想定外の形の状態で JSON.stringify が投げても、受信処理やタイマーの外へ漏らさない。SEC-05）
+  private safeSet(value: string | (() => string)) {
     try {
-      this.d.storage.set(snapshotKey(this.d.code), value);
+      this.d.storage.set(snapshotKey(this.d.code), typeof value === 'function' ? value() : value);
     } catch {
       // 保存できなくても続行
     }

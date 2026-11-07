@@ -128,7 +128,7 @@ describe('SEC-04: 未知のゲーム ID を含む状態', () => {
 });
 
 describe('SEC-05 / SEC-06: 異常な量・形のデータ', () => {
-  it.skip('SEC-05: 深い入れ子（10 万段）の game.state を含む状態を受けても、受信処理が例外を外に漏らさない', () => {
+  it('SEC-05: 深い入れ子（10 万段）の game.state を含む状態を受けても、受信処理が例外を外に漏らさない', () => {
     // 疑似ネットワークは JSON.stringify を通すので、Transport の受信コールバックへ直接渡す。
     // 現状：採用後のスナップショット保存（engine.saveNow の JSON.stringify）が RangeError を投げ、
     // Transport の受信コールバックまで例外が抜ける（CLAUDE.md「例外を投げない」に反する。以後の保存のたびに再発）

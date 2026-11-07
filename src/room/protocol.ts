@@ -73,6 +73,24 @@ const parseChat = (x: unknown): ChatMessage | null => {
   return { id: x.id, by: x.by, name: x.name, text: x.text, at: x.at };
 };
 
+// game.state の入れ子の上限（SEC-05）。正規のゲームの状態は数段なので十分に大きい。
+// 深すぎる入れ子は JSON.stringify（保存・配信）や View の描画で RangeError を投げるので、受信の時点で捨てる
+export const MAX_GAME_STATE_DEPTH = 64;
+
+// 再帰を使わずに深さを数える（深い入れ子そのものでスタックを溢れさせないため）。上限を超えた時点で打ち切る
+const withinDepth = (root: unknown, max: number): boolean => {
+  const stack: [unknown, number][] = [[root, 1]];
+  while (stack.length > 0) {
+    const [x, depth] = stack.pop()!;
+    if (typeof x !== 'object' || x === null) continue;
+    if (depth > max) return false;
+    for (const v of Object.values(x)) {
+      if (typeof v === 'object' && v !== null) stack.push([v, depth + 1]);
+    }
+  }
+  return true;
+};
+
 export function parseRoomState(raw: unknown, roomCode: string): RoomState | null {
   if (!isObj(raw)) return null;
   if (raw.code !== roomCode) return null;
@@ -94,7 +112,9 @@ export function parseRoomState(raw: unknown, roomCode: string): RoomState | null
     if (!isObj(g) || !isStr(g.id, 100) || !isNum(g.startedAt)) return null;
     const gamePlayers = parsePlayers(g.players, MAX_PLAYERS);
     if (!gamePlayers) return null;
-    // ゲームの中身はゲームごとに形が違うので検証しない（ホストが作ったものを信頼する。設計 §2.2）
+    // ゲームの中身はゲームごとに形が違うので検証しない（ホストが作ったものを信頼する。設計 §2.2）。
+    // ただし入れ子の深さだけは見る（SEC-05）
+    if (!withinDepth(g.state, MAX_GAME_STATE_DEPTH)) return null;
     game = { id: g.id, players: gamePlayers, state: g.state, startedAt: g.startedAt };
   }
   // 旧形式（acks なし）なら空で補う
