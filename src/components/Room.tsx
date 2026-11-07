@@ -67,7 +67,14 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
       return <Connecting code={code} />;
     case 'failed':
       return (
-        <Message title="接続できませんでした">
+        <Message
+          title={
+            <>
+              接続<wbr />
+              できませんでした
+            </>
+          }
+        >
           <p className="muted">通信環境を確認してもう一度お試しください。</p>
           <div className="row message-actions">
             <button className="btn primary" onClick={room.retry}>
@@ -81,7 +88,14 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
       );
     case 'notfound':
       return (
-        <Message title={`部屋 ${code} が見つかりません`}>
+        <Message
+          title={
+            <>
+              部屋 <span className="mono">{code}</span> が<wbr />
+              見つかりません
+            </>
+          }
+        >
           <p className="muted">コードが正しいか、ホストがまだ部屋にいるか確認してください。</p>
           <div className="row message-actions">
             <button className="btn" onClick={room.retry}>
@@ -95,8 +109,15 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
       );
     case 'full':
       return (
-        <Message title="この部屋は満員です">
-          <p className="muted">1つの部屋に入れるのは最大{MAX_ROOM_PLAYERS}人です。空きが出るまで待つか、別の部屋を作ってください。</p>
+        <Message
+          title={
+            <>
+              この部屋は満員です<wbr />
+              （最大{MAX_ROOM_PLAYERS}人）
+            </>
+          }
+        >
+          <p className="muted">空きが出るまで待つか、トップから別の部屋を作ってください。</p>
           <div className="row message-actions">
             <button className="btn primary" onClick={goHome}>
               トップへ
@@ -107,7 +128,15 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
     case 'kicked':
       // 「もう一度参加する」（MVP-13, Should）は今回入れない。自分で退出したと誤解されないよう文言だけ分ける
       return (
-        <Message title="ホストにより部屋から外されました">
+        <Message
+          title={
+            <>
+              ホストにより<wbr />
+              部屋から外されました
+            </>
+          }
+        >
+          <p className="muted">続けて遊ぶには、トップから部屋に入り直してください。</p>
           <div className="row message-actions">
             <button className="btn primary" onClick={goHome}>
               トップへ
@@ -148,13 +177,13 @@ function ReconnectBanner() {
     <div className="conn-banner" role="status" aria-live="polite">
       <span className="conn-spinner" aria-hidden />
       <span>
-        再接続中…<span className="conn-sub">通信が戻ると自動で続きから再開します</span>
+        再接続中…<span className="conn-sub">自動でつなぎ直しています</span>
       </span>
     </div>
   );
 }
 
-function Message({ title, children }: { title: string; children: ReactNode }) {
+function Message({ title, children }: { title: ReactNode; children?: ReactNode }) {
   return (
     <div className="page">
       <header className="topbar">

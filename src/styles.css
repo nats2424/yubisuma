@@ -390,6 +390,12 @@ input:focus {
   align-items: center;
 }
 
+/* 見出しが 1 文字だけ次の行に落ちないよう、改行は空白と <wbr> の位置だけにする（収まらない場合だけどこでも折る） */
+.message h2 {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .divider {
   display: flex;
   align-items: center;
@@ -573,6 +579,10 @@ input:focus {
   .room-side {
     position: sticky;
     top: 76px;
+  }
+  /* 「再接続中…」帯が出ている間は、その高さの分だけチャット欄を下げて帯に隠れないようにする */
+  .room-top:has(.conn-banner) ~ .room-layout .room-side {
+    top: 106px;
   }
   .room-side .chat-list {
     height: calc(100dvh - 240px);
