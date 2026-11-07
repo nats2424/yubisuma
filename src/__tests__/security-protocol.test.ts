@@ -245,7 +245,7 @@ describe('権限：ホストしかできない操作・メンバー以外の操�
     expect(s.players.map((p) => p.id)).toEqual(['a', 'b']);
   });
 
-  it.skip('SEC-02: 処理済み seq から大きく飛んだ seq（MAX_SAFE_INTEGER など）は受け付けない', () => {
+  it('SEC-02: 処理済み seq から大きく飛んだ seq（MAX_SAFE_INTEGER など）は受け付けない', () => {
     // 現状：c を名乗って seq = MAX_SAFE_INTEGER を送ると acks.c が上限になり、
     // c の次の seq（MAX_SAFE_INTEGER + 1）は parseWireMessage で捨てられるため、c はこの部屋で二度と操作できない
     const s = room();

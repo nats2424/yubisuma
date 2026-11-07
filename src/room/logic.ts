@@ -8,6 +8,10 @@ export const CHAT_MAX_LEN = 200;
 export const CHAT_RATE = { count: 3, windowMs: 3000 } as const;
 // ゲーム開始からこの時間内の startGame は無視する（「もう一度」の二重押しで二重に始まらないように。AC-21）
 export const START_GUARD_MS = 1500;
+// 処理済み seq からこれより大きく飛んだ seq は受け付けない（SEC-02）。
+// 他人の ID で巨大な seq を送られ、その人の以後の seq がすべて「処理済み」扱いになるのを防ぐ。
+// 正規の参加者は未確認の再送が最大 OUTBOX_MAX（50）件なので、この範囲に収まる
+export const SEQ_JUMP_MAX = 1000;
 
 export type RoomPlayer = { id: string; name: string };
 
@@ -232,7 +236,8 @@ export const acceptAction = (
   // gameSystem はホスト自身のタイマー専用
   if (action.type === 'gameSystem') return null;
   if (!state.players.some((p) => p.id === by)) return null;
-  if (seq <= ackOf(state, by)) return null;
+  const ack = ackOf(state, by);
+  if (seq <= ack || seq > ack + SEQ_JUMP_MAX) return null;
   const next = reduceRoom(state, action, by, now, games);
   // 退出した人の acks は作らない（leave の重複送信は非メンバーとして捨てられる）
   if (!next.players.some((p) => p.id === by)) return next;
