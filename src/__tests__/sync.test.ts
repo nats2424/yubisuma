@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_ROOM_PLAYERS, type RoomState } from '../room/logic';
 import { ROOM_TIMINGS } from '../room/engine';
-import { createSimRoom, type CounterState, type SimPeer } from './sim/harness';
+import type { RushState } from '../games/rush/logic';
+import { createSimRoom, rushBot, type CounterState, type SimPeer } from './sim/harness';
 
 // 疑似ネットワーク上のシナリオテスト（設計 §6.4）。時刻は SimClock だけを使い、乱数はシード固定なので毎回同じ結果になる
 const snap = (p: SimPeer) => p.engine.getSnapshot();
@@ -194,5 +195,96 @@ describe('起動と参加（B-15）', () => {
     expect(stateOf(room.peers.b).hostId).toBe('b');
     expect(snap(room.peers.b).isHost).toBe(true);
     expect(stateOf(room.peers.b).players.map((p) => p.id)).toEqual(['b']);
+  });
+});
+
+type Wire = { t?: string; seq?: number; action?: { type?: string; action?: { type?: string } } };
+const isAction = (m: unknown) => (m as Wire).t === 'action';
+const isSubmit = (m: unknown) => isAction(m) && (m as Wire).action?.type === 'game' && (m as Wire).action?.action?.type === 'submit';
+const rush = (p: SimPeer) => stateOf(p).game?.state as RushState;
+
+const startRush = (room: ReturnType<typeof createSimRoom>, host: string) => {
+  room.peers[host].engine.dispatch({ type: 'selectGame', gameId: 'rush' });
+  room.peers[host].engine.dispatch({ type: 'startGame', online: Object.keys(room.peers) });
+  room.settle(300);
+  for (const p of Object.values(room.peers)) expect(stateOf(p).game?.id).toBe('rush');
+};
+
+describe('連番・再送・受付上限（B-16）', () => {
+  it('AC-11: 参加者のアクションが 1 回欠落しても、1〜2 秒後の再送でホストに 1 回だけ適用される', () => {
+    const room = readyRoom(['a', 'b']);
+    startCounter(room, 'a');
+    room.sim.dropWhere((m, from, to) => isAction(m) && from === 'b' && to === 'a', 1);
+    const t0 = room.sim.clock.now();
+    room.peers.b.engine.dispatch(inc);
+    room.settle(900);
+    expect(counter(room.peers.a).count.b).toBeUndefined();
+    expect(room.sim.clock.runUntil(() => counter(room.peers.a).count.b === 1, 1200)).toBe(true);
+    expect(room.sim.clock.now() - t0).toBeGreaterThanOrEqual(1000);
+    expect(room.sim.clock.now() - t0).toBeLessThanOrEqual(2000);
+    room.settle(5000);
+    expect(counter(room.peers.a).count.b).toBe(1);
+    expect(counter(room.peers.b).count.b).toBe(1);
+    // 確認できたら再送をやめる
+    const sends = room.sim.log.filter((e) => e.from === 'b' && isAction(e.msg));
+    expect(sends).toHaveLength(2);
+  });
+
+  it('AC-14: 送信から 10 秒以上たった未確認アクションは再送されない', () => {
+    const room = readyRoom(['a', 'b']);
+    startCounter(room, 'a');
+    let cut = true;
+    room.sim.dropWhere((m, from) => cut && isAction(m) && from === 'b', Number.POSITIVE_INFINITY);
+    const t0 = room.sim.clock.now();
+    room.peers.b.engine.dispatch(inc);
+    room.settle(15000);
+    const sends = room.sim.log.filter((e) => e.from === 'b' && isAction(e.msg));
+    expect(sends.length).toBeGreaterThan(3);
+    expect(sends.every((e) => e.at - t0 < ROOM_TIMINGS.PENDING_TTL_MS)).toBe(true);
+    cut = false;
+    room.settle(5000);
+    expect(counter(room.peers.a).count.b).toBeUndefined();
+  });
+
+  it('AC-16: ラッシュの submit が最初の送信で欠落しても、締め切り前の再送で成功扱いになる', () => {
+    const room = readyRoom(['a', 'b']);
+    const bots = ['a', 'b'].map((id) => rushBot(room.peers[id], { success: true, delayMs: 500 }));
+    room.sim.dropWhere((m, from) => isSubmit(m) && from === 'b', 1);
+    startRush(room, 'a');
+    const start = rush(room.peers.a);
+    expect(room.sim.clock.runUntil(() => rush(room.peers.a).phase === 'result', 20000)).toBe(true);
+    const after = rush(room.peers.a);
+    expect(after.cleared).toEqual({ a: 1, b: 1 });
+    expect(after.lives).toEqual(start.lives);
+    // 欠落した 1 回のあと再送された
+    expect(room.sim.log.filter((e) => e.from === 'b' && isSubmit(e.msg)).length).toBeGreaterThanOrEqual(2);
+    bots.forEach((stop) => stop());
+  });
+
+  it('AC-19: 1 人から 1 秒に 30 件届いても処理は 10 件以下、他の人の操作は通常どおり処理される', () => {
+    const room = readyRoom(['a', 'b', 'c']);
+    startCounter(room, 'a');
+    for (let i = 0; i < 30; i++) room.peers.b.engine.dispatch(inc);
+    room.peers.c.engine.dispatch(inc);
+    room.settle(900);
+    expect(counter(room.peers.a).count.b).toBeLessThanOrEqual(ROOM_TIMINGS.ACTION_RATE.count);
+    expect(counter(room.peers.a).count.c).toBe(1);
+    // 捨てた分は acks を進めないので、本人の再送で後から届く（操作は失われない）
+    room.settle(5000);
+    expect(counter(room.peers.a).count.b).toBe(30);
+  });
+
+  it('AC-23: submit を 1 回 dispatch すると、通信に流れる action は同じ seq のもの（再送を含む）だけ', () => {
+    const room = readyRoom(['a', 'b']);
+    startRush(room, 'a');
+    // 確実に再送も起きるよう、最初の 2 回を落とす
+    room.sim.dropWhere((m, from) => isSubmit(m) && from === 'b', 2);
+    const t0 = room.sim.clock.now();
+    room.peers.b.engine.dispatch({ type: 'game', action: { type: 'submit', result: { score: 20, success: true } } });
+    room.settle(5000);
+    const sends = room.sim.log.filter((e) => e.from === 'b' && e.at >= t0 && isAction(e.msg));
+    expect(sends.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(sends.map((e) => (e.msg as Wire).seq)).size).toBe(1);
+    expect(rush(room.peers.a).round.results.b).toEqual({ score: 20, success: true });
   });
 });
