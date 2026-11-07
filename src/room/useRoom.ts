@@ -179,17 +179,22 @@ export function useRoom(code: string, me: string, name: string, create: boolean)
       }
     });
 
-    transport.ready
-      .then(() => {
-        if (disposed) return;
-        if (create) {
-          commit(createRoom(code, { id: me, name }, DEFAULT_GAME), true);
-        } else {
-          send({ t: 'action', from: me, action: { type: 'join', name } });
-        }
-        send({ t: 'hb', from: me });
-      })
-      .catch(() => !disposed && setStatus('failed'));
+    // B-12 の暫定配線：最初に connected になったときだけ旧実装の初期化を行う（B-18 で engine に置き換える）
+    let started = false;
+    const onStatus = (s: string) => {
+      if (disposed) return;
+      if (s === 'failed') setStatus('failed');
+      if (s !== 'connected' || started) return;
+      started = true;
+      if (create) {
+        commit(createRoom(code, { id: me, name }, DEFAULT_GAME), true);
+      } else {
+        send({ t: 'action', from: me, action: { type: 'join', name } });
+      }
+      send({ t: 'hb', from: me });
+    };
+    transport.onStatus(onStatus);
+    if (transport.status === 'connected') onStatus('connected');
 
     let lastResync = Date.now();
     let lastHeartbeat = 0;
