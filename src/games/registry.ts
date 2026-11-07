@@ -1,4 +1,5 @@
 import type { GameCategory, GameDef } from './types';
+import { speedUpRuleText, TUNING } from './micro/tuning';
 import * as daifugo from './daifugo/logic';
 import DaifugoView from './daifugo/View';
 import * as majority from './majority/logic';
@@ -100,7 +101,8 @@ export const GAME_LIST: GameDef[] = [
     tagline: '数秒のミニゲームが次々に。どこまで生き残れるか',
     rules: [
       '「連打！」「よけろ！」「止めろ！」など、数秒で終わるミニゲームが次々に出ます。全員同時に挑戦。',
-      '失敗するとライフが1つ減り、0になったら脱落。5ステージごとにスピードアップ。',
+      // 数値は調整値から作る（調整しても説明と食い違わないように。AC-42）
+      `失敗するとライフが1つ減り、0になったら脱落。${speedUpRuleText()}。`,
       '最後まで生き残った人の勝ち。順位はクリアしたステージ数で決まります。',
     ],
     minPlayers: 1,
@@ -111,12 +113,8 @@ export const GAME_LIST: GameDef[] = [
       {
         key: 'lives',
         label: 'ライフ',
-        choices: [
-          { value: 3, label: '3' },
-          { value: 4, label: '4' },
-          { value: 5, label: '5' },
-        ],
-        default: 4,
+        choices: TUNING.lives.choices.map((n) => ({ value: n, label: String(n) })),
+        default: TUNING.lives.default,
       },
     ],
     init: rush.init,

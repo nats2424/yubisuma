@@ -7,13 +7,15 @@ import {
   submitMicro,
   type MicroRound,
 } from '../micro/core';
+import { TUNING } from '../micro/tuning';
 import type { GameOptions, GamePlayer, Scheduled } from '../types';
 
+// テンポの値は調整値（micro/tuning.ts）から読む。
 // 通信があるので指示表示はひとり用より少し長め
-const INTRO_MS = 2400;
-const RESULT_MS = 2500;
+const INTRO_MS = TUNING.rush.introMs;
+const RESULT_MS = TUNING.rush.resultMs;
 // 全員そろってから結果画面へ移るまでの間（自分の判定を見る時間）
-const VERDICT_MS = 1600;
+const VERDICT_MS = TUNING.rush.verdictMs;
 
 export type RushState = {
   order: string[];

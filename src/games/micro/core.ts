@@ -1,6 +1,7 @@
 // 瞬間ミニゲーム（数秒で終わる小さなゲーム）の共通部分。
 // 各端末がローカルで遊び、結果（スコアと成否）だけをホストに送る。
 // 配置などの乱数は seed から生成するので、全員が同じ問題を遊ぶ。
+import { enabledMicroIds, speedForStage, TUNING, type MicroTuning, type Tuning } from './tuning';
 
 export type MicroResult = { score: number; success: boolean };
 
@@ -14,18 +15,25 @@ export type MicroMeta = {
   scales: boolean;
 };
 
-export const MICRO_META: MicroMeta[] = [
-  { id: 'mash', title: '連打！', hint: 'ボタンをとにかく連打', baseMs: 5000, scales: true },
-  { id: 'stop', title: '止めろ！', hint: '針が緑のゾーンに来たらタップ', baseMs: 5000, scales: true },
-  { id: 'whack', title: 'タッチ！', hint: '出てきた的をタップ', baseMs: 6000, scales: true },
-  { id: 'dodge', title: 'よけろ！', hint: '指（マウス）を左右に動かして落下物をよける', baseMs: 6000, scales: true },
-  { id: 'balloon', title: 'ふくらませろ！', hint: 'タップでふくらむ。割れる前にストップ', baseMs: 6000, scales: true },
-  { id: 'count', title: 'かぞえろ！', hint: '一瞬だけ出るマークの数は？', baseMs: 6000, scales: true },
-  { id: 'color', title: '文字の色は？', hint: '書いてある言葉ではなく「文字の色」を選ぶ', baseMs: 7000, scales: true },
-  { id: 'math', title: '計算！', hint: '正しい答えを選ぶ', baseMs: 7000, scales: true },
-  { id: 'odd', title: '仲間はずれ！', hint: '1つだけ違うものをタップ', baseMs: 6000, scales: true },
-  { id: 'timing', title: '3秒ぴったり！', hint: 'スタートから3秒だと思ったらタップ', baseMs: 6000, scales: false },
+// 表示用の文言だけをここに持ち、制限時間（baseMs / scales）は調整値 TUNING.micro から合成する
+const TIMING_SEC = TUNING.micro.timing.params.targetMs / 1000;
+const MICRO_TEXT: Pick<MicroMeta, 'id' | 'title' | 'hint'>[] = [
+  { id: 'mash', title: '連打！', hint: 'ボタンをとにかく連打' },
+  { id: 'stop', title: '止めろ！', hint: '針が緑のゾーンに来たらタップ' },
+  { id: 'whack', title: 'タッチ！', hint: '出てきた的をタップ' },
+  { id: 'dodge', title: 'よけろ！', hint: '指（マウス）を左右に動かして落下物をよける' },
+  { id: 'balloon', title: 'ふくらませろ！', hint: 'タップでふくらむ。割れる前にストップ' },
+  { id: 'count', title: 'かぞえろ！', hint: '一瞬だけ出るマークの数は？' },
+  { id: 'color', title: '文字の色は？', hint: '書いてある言葉ではなく「文字の色」を選ぶ' },
+  { id: 'math', title: '計算！', hint: '正しい答えを選ぶ' },
+  { id: 'odd', title: '仲間はずれ！', hint: '1つだけ違うものをタップ' },
+  { id: 'timing', title: `${TIMING_SEC}秒ぴったり！`, hint: `スタートから${TIMING_SEC}秒だと思ったらタップ` },
 ];
+
+export const MICRO_META: MicroMeta[] = MICRO_TEXT.map((m) => {
+  const t: MicroTuning = (TUNING.micro as Record<string, MicroTuning>)[m.id];
+  return { ...m, baseMs: t.baseMs, scales: t.scales };
+});
 
 export const MICRO_IDS = MICRO_META.map((m) => m.id);
 export const microMeta = (id: string) => MICRO_META.find((m) => m.id === id) ?? MICRO_META[0];
@@ -46,19 +54,17 @@ export const randInt = (r: () => number, min: number, max: number) => min + Math
 
 // ---------- ホスト側のラウンド管理 ----------
 
-const INTRO_MS = 2500;
-export const LIVES = 4;
+export const LIVES = TUNING.lives.default;
 
-// 何ステージ目か → スピード倍率。5ステージごとに速くなる（最大2倍）
-export const speedForStage = (stage: number) => Math.min(2, 1 + Math.floor((stage - 1) / 5) * 0.15);
+// 何ステージ目か → スピード倍率（調整値は tuning.ts。既存の import のためにここからも公開する）
+export { speedForStage };
 
-// 直前と同じゲームが続かないように次のゲームを選ぶ
-export const nextMicroId = (prev?: string) => {
-  const pool = MICRO_IDS.filter((id) => id !== prev);
+// 直前と同じゲームが続かないように次のゲームを選ぶ。enabled: false のミニゲームは出さない
+export const nextMicroId = (prev?: string, t: Tuning = TUNING) => {
+  const enabled = new Set(enabledMicroIds(t));
+  const pool = MICRO_IDS.filter((id) => id !== prev && enabled.has(id));
   return pool[Math.floor(Math.random() * pool.length)];
 };
-// 通信遅延・時計のずれを吸収する猶予
-const GRACE_MS = 2500;
 
 export type MicroRound = {
   microId: string;
@@ -69,7 +75,7 @@ export type MicroRound = {
   results: Record<string, MicroResult>;
 };
 
-export const startMicroRound = (microId: string, now: number, speed = 1, introMs = INTRO_MS): MicroRound => {
+export const startMicroRound = (microId: string, now: number, speed = 1, introMs: number = TUNING.rush.introMs): MicroRound => {
   const meta = microMeta(microId);
   const duration = Math.round(meta.scales ? meta.baseMs / speed : meta.baseMs);
   const startAt = now + introMs;
@@ -78,7 +84,8 @@ export const startMicroRound = (microId: string, now: number, speed = 1, introMs
     seed: Math.floor(Math.random() * 2 ** 31),
     startAt,
     duration,
-    endsAt: startAt + duration + GRACE_MS,
+    // 通信遅延・時計のずれを吸収する猶予
+    endsAt: startAt + duration + TUNING.rush.graceMs,
     results: {},
   };
 };
