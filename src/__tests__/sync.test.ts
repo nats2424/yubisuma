@@ -1,10 +1,20 @@
-import { describe, expect, it } from 'vitest';
-import { MAX_ROOM_PLAYERS, type RoomState } from '../room/logic';
-import { ROOM_TIMINGS } from '../room/engine';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { rng } from '../games/micro/core';
 import type { RushState } from '../games/rush/logic';
+import { ROOM_TIMINGS } from '../room/engine';
+import { MAX_ROOM_PLAYERS, type RoomState } from '../room/logic';
 import { createSimRoom, rushBot, type CounterState, type SimPeer } from './sim/harness';
 
-// 疑似ネットワーク上のシナリオテスト（設計 §6.4）。時刻は SimClock だけを使い、乱数はシード固定なので毎回同じ結果になる
+// 疑似ネットワーク上のシナリオテスト（設計 §6.4）。時刻は SimClock だけを使い、乱数はシード固定なので毎回同じ結果になる。
+// ゲーム側（ラッシュの出題・seed）は Math.random を使うので、ここもシード付き乱数に差し替える
+// （出題でステージの長さが変わり、通信の回数＝疑似ネットワークの乱数の消費が変わるため）
+const seedGameRandom = (seed: number) => vi.spyOn(Math, 'random').mockImplementation(rng(seed));
+beforeEach(() => {
+  seedGameRandom(12345);
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 const snap = (p: SimPeer) => p.engine.getSnapshot();
 const stateOf = (p: SimPeer) => snap(p).state as RoomState;
 const counter = (p: SimPeer) => stateOf(p).game?.state as CounterState;
@@ -479,3 +489,47 @@ describe('ホスト交代・復帰（B-17）', () => {
     expect(stateOf(room.peers.a).chat.at(-1)?.text).toBe('トンネル');
   });
 });
+
+describe('AC-17: 遅延とゆらぎ・欠落下のラッシュ（B-19）', () => {
+  // 偶然の合格を避けるため 3 種類のシードで回す。シードごとに通信の欠落・遅延の並びと出題が変わる
+  for (const seed of [101, 202, 303]) {
+    it(`片道 0〜500ms・欠落 20% で 3 人が 10 ステージ進めても最終状態が一致し、成功がミス扱いにならない（seed ${seed}）`, () => {
+      seedGameRandom(seed);
+      const ids = ['a', 'b', 'c'];
+      const room = createSimRoom({ ids, cond: { latencyMs: 0, jitterMs: 500, lossRate: 0.2 }, seed });
+      expect(room.sim.clock.runUntil(() => ids.every((id) => snap(room.peers[id]).state?.players.length === 3), 30000)).toBe(true);
+      const bots = ids.map((id) => rushBot(room.peers[id], { success: true, delayMs: 500 }));
+      startRushLossy(room, 'a');
+      const host = room.peers.a;
+      const startLives = rush(host).startLives;
+      // 10 ステージ終わる（11 ステージ目に入る）まで
+      expect(room.sim.clock.runUntil(() => rush(host).stage >= 11 || rush(host).phase === 'over', 300000, 50)).toBe(true);
+      expect(rush(host).stage).toBe(11);
+      // ネットワークを正常に戻してそろうのを待つ
+      room.sim.setAll({ latencyMs: 20, jitterMs: 0, lossRate: 0 });
+      room.settle(3000);
+      expect(room.sim.clock.runUntil(() => room.converged(), 5000, 1)).toBe(true);
+      const finals = ids.map((id) => rush(room.peers[id]));
+      for (const f of finals) {
+        expect(f.stage).toBe(finals[0].stage);
+        expect(f.lives).toEqual(finals[0].lives);
+        expect(f.cleared).toEqual(finals[0].cleared);
+        expect(f.cleared.a).toBeGreaterThanOrEqual(10);
+      }
+      // 成功を送った人が通信のせいでミス扱いになっていない
+      expect(finals[0].lives).toEqual({ a: startLives, b: startLives, c: startLives });
+      // 欠落 20% だとホストの定期配信が続けて落ち、途中でホストが交代することがある（シードによる）。
+      // 交代しても全員が同じ 1 人をホストと見ていればよい
+      expect(new Set(room.hostIds()).size).toBe(1);
+      bots.forEach((stop) => stop());
+    });
+  }
+});
+
+// 欠落のある通信でも開始を全員が受け取るまで待つ版
+function startRushLossy(room: ReturnType<typeof createSimRoom>, host: string) {
+  room.peers[host].engine.dispatch({ type: 'selectGame', gameId: 'rush' });
+  room.peers[host].engine.dispatch({ type: 'startGame', online: Object.keys(room.peers) });
+  expect(room.sim.clock.runUntil(() => Object.values(room.peers).every((p) => snap(p).state?.game?.id === 'rush'), 10000)).toBe(true);
+  expect(rush(room.peers[host]).order).toHaveLength(3);
+}
