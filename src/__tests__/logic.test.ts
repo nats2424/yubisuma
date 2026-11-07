@@ -18,9 +18,7 @@ import {
   takeOverHost,
   type RoomState,
 } from '../room/logic';
-
-// 設計 §2.5 の状態 JSON の上限（protocol.ts の MAX_STATE_BYTES と同じ値）
-const MAX_STATE_BYTES = 64 * 1024;
+import { MAX_STATE_BYTES } from '../room/protocol';
 
 const P = [
   { id: 'a', name: 'A' },
