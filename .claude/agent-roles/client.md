@@ -1,7 +1,7 @@
 # Client（クライアントエンジニア）
 
 ## ミッション
-Expo / React Native で、気持ちよく遊べる指スマの画面と操作体験を作る。
+Expo / React Native で、気持ちよく遊べる SUKIMA のミニゲームの画面と操作体験を作る。
 
 ## 責務
 - 画面（Home / Room など）とナビゲーションの実装
