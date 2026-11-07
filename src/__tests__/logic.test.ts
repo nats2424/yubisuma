@@ -4,7 +4,16 @@ import * as majority from '../games/majority/logic';
 import * as reaction from '../games/reaction/logic';
 import * as wordwolf from '../games/wordwolf/logic';
 import * as yubisuma from '../games/yubisuma/logic';
-import { compareStates, createRoom, pickNextHost, reduceRoom, takeOverHost } from '../room/logic';
+import {
+  CHAT_RATE,
+  chatBlockedUntil,
+  compareStates,
+  createRoom,
+  pickNextHost,
+  reduceRoom,
+  takeOverHost,
+  type RoomState,
+} from '../room/logic';
 
 const P = [
   { id: 'a', name: 'A' },
@@ -123,5 +132,49 @@ describe('majority', () => {
     expect(s.scores).toEqual({ a: 1, b: 1, c: 0 });
     s = majority.reduce(s, { type: 'next' }, 'a', 0);
     expect(s.round).toBe(2);
+  });
+});
+
+describe('chatBlockedUntil', () => {
+  const room = (): RoomState => {
+    let s = createRoom('ABCD', P[0], 'reaction');
+    s = reduceRoom(s, { type: 'join', name: 'B' }, 'b', 0, GAMES);
+    return s;
+  };
+  const say = (s: RoomState, by: string, at: number) => reduceRoom(s, { type: 'chat', text: 'hi' }, by, at, GAMES);
+
+  it('2 件までなら 0', () => {
+    let s = room();
+    s = say(s, 'a', 1000);
+    s = say(s, 'a', 1100);
+    expect(chatBlockedUntil(s, 'a', 1200)).toBe(0);
+  });
+
+  it('3 件送ったあとは 3 件目（新しい方から数えて）の at + 3000 を返す', () => {
+    let s = room();
+    s = say(s, 'a', 1000);
+    s = say(s, 'a', 1100);
+    s = say(s, 'a', 1200);
+    expect(CHAT_RATE).toEqual({ count: 3, windowMs: 3000 });
+    // 直近 3 件のうち最も古い 1000 が窓を抜けるまで送れない
+    expect(chatBlockedUntil(s, 'a', 1300)).toBe(4000);
+    expect(chatBlockedUntil(s, 'a', 3999)).toBe(4000);
+    expect(chatBlockedUntil(s, 'a', 4000)).toBe(0);
+  });
+
+  it('同時刻に 3 件なら その at + 3000', () => {
+    let s = room();
+    for (let i = 0; i < 3; i++) s = say(s, 'a', 2000);
+    expect(chatBlockedUntil(s, 'a', 2000)).toBe(5000);
+  });
+
+  it('他人のチャットは数えない', () => {
+    let s = room();
+    s = say(s, 'b', 1000);
+    s = say(s, 'b', 1100);
+    s = say(s, 'b', 1200);
+    s = say(s, 'a', 1250);
+    expect(chatBlockedUntil(s, 'a', 1300)).toBe(0);
+    expect(chatBlockedUntil(s, 'b', 1300)).toBe(4000);
   });
 });

@@ -67,11 +67,11 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
       </Message>
     );
   }
-  if (status === 'notfound' || status === 'error') {
+  if (status === 'notfound' || status === 'failed') {
     return (
-      <Message title={status === 'error' ? '接続できませんでした' : `部屋 ${code} が見つかりません`}>
+      <Message title={status === 'failed' ? '接続できませんでした' : `部屋 ${code} が見つかりません`}>
         <p className="muted">
-          {status === 'error' ? '通信環境を確認してもう一度お試しください。' : 'コードが正しいか、ホストがまだ部屋にいるか確認してください。'}
+          {status === 'failed' ? '通信環境を確認してもう一度お試しください。' : 'コードが正しいか、ホストがまだ部屋にいるか確認してください。'}
         </p>
         <div className="row">
           <button className="btn" onClick={() => location.reload()}>

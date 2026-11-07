@@ -2,7 +2,10 @@ import { resolveOptions, type GameDef, type GameOptions, type GamePlayer } from 
 
 export const MAX_ROOM_PLAYERS = 10;
 const CHAT_KEEP = 60;
-const CHAT_MAX_LEN = 200;
+// Client が入力欄の上限表示に使うので export する
+export const CHAT_MAX_LEN = 200;
+// チャットの連投制限：1 人あたり windowMs の間に count 件まで（AC-20）
+export const CHAT_RATE = { count: 3, windowMs: 3000 } as const;
 
 export type RoomPlayer = { id: string; name: string };
 
@@ -77,6 +80,19 @@ const withChat = (state: RoomState, msg: ChatMessage): RoomState => ({
 });
 
 // オンラインのメンバーから次のホスト候補を選ぶ（参加順で最も古い人）
+// この時刻までチャットを送れない（送れるなら 0）。
+// 追加の状態を持たず state.chat の by / at から数えるので、ホスト交代後も同じ判定になる。
+// Client のボタン無効化とホストの受付判定で同じ式を使い、表示と実際の挙動をずらさない。
+// 直近 windowMs 内の自分の発言が count 件以上なら、そのうち古い方から数えて
+// 「新しい方から count 件目」が窓を抜ける時刻まで待たせる（スライディングウィンドウ）
+export const chatBlockedUntil = (state: RoomState, me: string, now: number): number => {
+  const recent = state.chat.filter((m) => m.by === me && m.at > now - CHAT_RATE.windowMs).map((m) => m.at);
+  if (recent.length < CHAT_RATE.count) return 0;
+  recent.sort((a, b) => a - b);
+  const until = recent[recent.length - CHAT_RATE.count] + CHAT_RATE.windowMs;
+  return until > now ? until : 0;
+};
+
 export const pickNextHost = (state: RoomState, online: Set<string>, exclude?: string): string | null =>
   state.players.find((p) => p.id !== exclude && online.has(p.id))?.id ?? null;
 

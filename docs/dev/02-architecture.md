@@ -161,6 +161,8 @@ export function acceptAction(
 export function chatBlockedUntil(state: RoomState, me: string, now: number): number;
 ```
 
+- **Phase 0 で調整**：`chatBlockedUntil` の数え方を明確にした。直近 `windowMs` 内（`at > now - windowMs`）の自分の発言が `count` 件以上なら、新しい方から数えて `count` 件目の `at + windowMs` を返す（スライディングウィンドウ。3 件送った直後なら直近 3 件のうち最も古い発言の `at + 3000`）。その時刻以降、または件数が足りなければ 0。
+
 `reduceRoom` の変更：
 - `game` / `gameSystem`：`def.reduce` を `try/catch` で包み、例外なら `state` をそのまま返す（AC-04）。
 - `startGame`：`state.game && now - state.game.startedAt < START_GUARD_MS` なら無視（AC-21）。
@@ -616,6 +618,9 @@ export function enabledMicroIds(t?: Tuning): string[];
 export function validateTuning(t: Tuning): string[];               // 違反の説明の配列。空なら妥当
 ```
 
+- **Phase 0 で調整**：本書に `Tuning` 型の定義がなかったので、`TUNING` の形どおりに次で確定した（`lives.choices` は `readonly number[]`、`micro` は `Record<string, MicroTuning>`）。`speedForStage` / `speedUpRuleText` は `(stage, t = TUNING)` / `(t = TUNING)` の既定引数で実装。Phase 0 では `enabledMicroIds` / `validateTuning` は未実装（B-20）。
+  `type Tuning = { rush: {introMs; resultMs; verdictMs; graceMs}; solo: {introMs}; stage: {verdictMs; minPlayMs}; speed: {everyStages; step; max}; lives: {default; choices}; micro: Record<string, MicroTuning> }`（値はすべて `number`）
+
 - `params` のキー名は上の表を初期案とし、Backend が `action.tsx` / `brain.tsx` を移すときに確定してよい（Client は参照しない）。数式中の係数（例：大きさの見た目 `0.05`）など「難易度ではない見た目の値」は移さない。
 - `MICRO_META` は `title` / `hint` だけを持つ表示用データとして `core.ts` に残し、`baseMs` / `scales` は `TUNING.micro` から合成する（`microMeta(id)` の戻り値の形は変えない）。
 - `nextMicroId` は `enabledMicroIds()` から選ぶ。ひとり用の「1つずつ練習」一覧は全種類のまま。
@@ -719,6 +724,8 @@ export type RoomHandle = {
 ```
 
 `useRoom(code, me, name, create): RoomHandle` のシグネチャは現行どおり。`RoomHandle` は `useRoom.ts` からも再エクスポートする（Room.tsx の既存 import がそのまま通る）。
+
+- **Phase 0 で調整**：契約の型は本節の全文どおりで変更なし。暫定 `useRoom`（B-02）は `connection` を常に `'connected'`、`retry` を `location.reload()` で返し、`'full'` / `'kicked'` はまだ返さない（ホストに外されたときは旧実装どおり `'left'`）。これらは B-15〜B-18 で engine に移すときに出すようになる。
 
 ### 9.4 契約：Client が使う純粋関数・定数
 

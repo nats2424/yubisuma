@@ -10,6 +10,7 @@ import {
   type RoomAction,
   type RoomState,
 } from './logic';
+import type { RoomHandle, RoomStatus } from './types';
 
 // 通信メッセージ
 type WireMessage =
@@ -42,18 +43,8 @@ const loadSnapshot = (code: string): RoomState | null => {
   }
 };
 
-export type RoomStatus = 'connecting' | 'ready' | 'notfound' | 'error' | 'left';
-
-export type RoomHandle = {
-  status: RoomStatus;
-  state: RoomState | null;
-  me: string;
-  isHost: boolean;
-  online: Set<string>;
-  dispatch: (action: RoomAction) => void;
-  now: () => number;
-  leave: () => void;
-};
+// 契約型は types.ts に置き、既存の import（Room.tsx など）のためにここからも再エクスポートする
+export type { RoomHandle, RoomStatus, ConnectionStatus } from './types';
 
 export function useRoom(code: string, me: string, name: string, create: boolean): RoomHandle {
   const [state, setState] = useState<RoomState | null>(null);
@@ -198,7 +189,7 @@ export function useRoom(code: string, me: string, name: string, create: boolean)
         }
         send({ t: 'hb', from: me });
       })
-      .catch(() => !disposed && setStatus('error'));
+      .catch(() => !disposed && setStatus('failed'));
 
     let lastResync = Date.now();
     let lastHeartbeat = 0;
@@ -274,9 +265,16 @@ export function useRoom(code: string, me: string, name: string, create: boolean)
     setStatus('left');
   }, [me, now, send]);
 
+  // Phase 0 の暫定実装：ページを読み直して最初から接続し直す。
+  // Phase 1（B-18）で engine.retry() に差し替え、読み直さずに再接続する
+  const retry = useCallback(() => {
+    location.reload();
+  }, []);
+
   const isHost = state?.hostId === me;
   return useMemo(
-    () => ({ status, state, me, isHost, online, dispatch, now, leave }),
-    [status, state, me, isHost, online, dispatch, now, leave],
+    // 接続状態の追跡は Phase 1 の ManagedTransport で入れる。それまでは常に connected と報告する
+    () => ({ status, connection: 'connected' as const, state, me, isHost, online, dispatch, now, leave, retry }),
+    [status, state, me, isHost, online, dispatch, now, leave, retry],
   );
 }

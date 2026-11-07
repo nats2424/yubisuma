@@ -1,5 +1,9 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js';
 
+// 通信層の接続状態。Client 契約（src/room/types.ts）から参照する。
+// Phase 0 では型だけ先に置き、状態機械（ManagedTransport）は Phase 1 で実装する
+export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'failed';
+
 // ルーム内の全員にメッセージを配るだけの最小インターフェース。
 // 自分が送ったメッセージは自分には届かない。
 export interface Transport {
