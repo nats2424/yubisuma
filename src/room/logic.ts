@@ -8,6 +8,10 @@ export const CHAT_MAX_LEN = 200;
 export const CHAT_RATE = { count: 3, windowMs: 3000 } as const;
 // ゲーム開始からこの時間内の startGame は無視する（「もう一度」の二重押しで二重に始まらないように。AC-21）
 export const START_GUARD_MS = 1500;
+// 処理済み seq からこれより大きく飛んだ seq は受け付けない（SEC-02）。
+// 他人の ID で巨大な seq を送られ、その人の以後の seq がすべて「処理済み」扱いになるのを防ぐ。
+// 正規の参加者は未確認の再送が最大 OUTBOX_MAX（50）件なので、この範囲に収まる
+export const SEQ_JUMP_MAX = 1000;
 
 export type RoomPlayer = { id: string; name: string };
 
@@ -70,6 +74,25 @@ export const compareStates = (a: RoomState, b: RoomState): number => {
   if (a.hostId !== b.hostId) return a.hostId < b.hostId ? 1 : -1;
   return a.version - b.version;
 };
+
+// 今の状態から世代・版がこれより大きく飛んだ状態は採用しない（SEC-01）。
+// 巨大な epoch / version（MAX_SAFE_INTEGER など）の偽の状態 1 通を採用すると、以後の正しい状態がすべて「古い」扱いになるか、
+// 次の +1 が安全な整数を超えて全員に捨てられ、攻撃者が去っても部屋が戻らないため。
+// 絶対値の上限では「上限ちょうど」を送られると同じことが起きるので、相対で見る。
+// 版は世代が変わっても引き継がれる（takeOverHost は version + 1）ので、世代に関係なく比べる。
+// 上限は、長く離れていた参加者が追いつけなくなることのないよう十分大きく取る（5 件/秒で 1 日 ≒ 43 万版）
+export const EPOCH_JUMP_MAX = 1000;
+export const VERSION_JUMP_MAX = 1_000_000;
+export const isImplausibleJump = (next: RoomState, cur: RoomState): boolean =>
+  next.epoch > cur.epoch + EPOCH_JUMP_MAX || next.version > cur.version + VERSION_JUMP_MAX;
+
+// 状態が参照するゲーム（selectedGame・game.id）がすべてこの端末の登録にあるか（SEC-04）。
+// 登録にない ID（constructor・__proto__ などを含む）の状態を採用すると、画面が GAMES[id] を引けず全員が真っ白になる。
+// 悪意だけでなくデプロイ直後の版ずれ（新しい版のタブが新ゲームを選ぶ）でも起こるので、採用前に確かめる。
+// 継承プロパティを拾わないよう hasOwnProperty で見る
+const hasGame = (games: GameRegistry, id: string): boolean => Object.prototype.hasOwnProperty.call(games, id);
+export const hasKnownGames = (state: RoomState, games: GameRegistry): boolean =>
+  hasGame(games, state.selectedGame) && (state.game === null || hasGame(games, state.game.id));
 
 let msgSeq = 0;
 const systemMessage = (text: string, now: number): ChatMessage => ({
@@ -232,7 +255,8 @@ export const acceptAction = (
   // gameSystem はホスト自身のタイマー専用
   if (action.type === 'gameSystem') return null;
   if (!state.players.some((p) => p.id === by)) return null;
-  if (seq <= ackOf(state, by)) return null;
+  const ack = ackOf(state, by);
+  if (seq <= ack || seq > ack + SEQ_JUMP_MAX) return null;
   const next = reduceRoom(state, action, by, now, games);
   // 退出した人の acks は作らない（leave の重複送信は非メンバーとして捨てられる）
   if (!next.players.some((p) => p.id === by)) return next;

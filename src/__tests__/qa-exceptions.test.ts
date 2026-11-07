@@ -196,7 +196,7 @@ describe('QA: リロード', () => {
   });
 
   // 修正後に skip を外す（docs/dev/04-qa-report.md QA-BUG-01）
-  it.skip('QA-BUG-01: 部屋を作って 9 秒以内にホストがリロードしても、3 秒以内に復帰できる（AC-29 の境界）', () => {
+  it('QA-BUG-01: 部屋を作って 9 秒以内にホストがリロードしても、3 秒以内に復帰できる（AC-29 の境界）', () => {
     // 部屋を作った直後（参加者が入って数秒）にホストがリロードする
     const room = createSimRoom({ ids: ['a', 'b'] });
     expect(room.sim.clock.runUntil(() => stateOf(room.peers.a)?.players.length === 2, 3000)).toBe(true);
@@ -210,7 +210,7 @@ describe('QA: リロード', () => {
   });
 
   // 修正後に skip を外す（QA-BUG-01 の別パターン）
-  it.skip('QA-BUG-01: ホストのリロードの 1 秒後に参加者もリロードしても、「見つかりません」を出さずに 3 秒以内に戻る', () => {
+  it('QA-BUG-01: ホストのリロードの 1 秒後に参加者もリロードしても、「見つかりません」を出さずに 3 秒以内に戻る', () => {
     const room = readyRoom(['a', 'b']);
     room.peers.a.reload();
     room.settle(1000);
@@ -227,7 +227,7 @@ describe('QA: リロード', () => {
   });
 
   // 修正後に skip を外す（QA-BUG-01 の別パターン。E2E で観測：offline→online の直後にホストがタブを閉じると交代に約 7.8 秒）
-  it.skip('QA-BUG-01: 次のホスト候補がタブ復帰（resume）した直後でも、ホストの bye から 1 秒以内に交代する（AC-25）', () => {
+  it('QA-BUG-01: 次のホスト候補がタブ復帰（resume）した直後でも、ホストの bye から 1 秒以内に交代する（AC-25）', () => {
     const room = readyRoom(['a', 'b', 'c']);
     start(room, 'a', 'counter');
     room.peers.b.engine.resume();
@@ -239,7 +239,7 @@ describe('QA: リロード', () => {
   });
 
   // 修正後に skip を外す（docs/dev/04-qa-report.md QA-BUG-02）
-  it.skip('QA-BUG-02: 2 人の部屋で 2 人ともほぼ同時にリロードしても、部屋は失われない', () => {
+  it('QA-BUG-02: 2 人の部屋で 2 人ともほぼ同時にリロードしても、部屋は失われない', () => {
     const room = readyRoom(['a', 'b']);
     start(room, 'a', 'counter');
     room.peers.a.engine.dispatch(inc);
@@ -461,7 +461,7 @@ describe('QA: 途中参加・満員・外された人', () => {
   });
 
   // 修正後に skip を外す（docs/dev/04-qa-report.md QA-BUG-04）
-  it.skip('QA-BUG-04: 旧ホストだけが受け付けた参加者は、ホスト交代後に「外されました」にならず自動で入り直す', () => {
+  it('QA-BUG-04: 旧ホストだけが受け付けた参加者は、ホスト交代後に「外されました」にならず自動で入り直す', () => {
     const room = readyRoom(['a', 'b']);
     // x の参加を a が処理した状態が、b にだけ届かない
     let block = true;

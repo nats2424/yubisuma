@@ -78,7 +78,7 @@ describe('なりすまし・権限（S-01）', () => {
 });
 
 describe('SEC-01: 巨大な epoch / version の偽の状態 1 通で部屋が壊れる', () => {
-  it.skip('SEC-01: version = MAX_SAFE_INTEGER の偽の状態のあとも、ホストの変更が参加者に届く', () => {
+  it('SEC-01: version = MAX_SAFE_INTEGER の偽の状態のあとも、ホストの変更が参加者に届く', () => {
     // 現状：全員（ホストも）が偽の状態を採用し、ホストの次の version（MAX_SAFE_INTEGER + 1）が
     // parseRoomState の「安全な整数」検査で全員に捨てられる。以後この部屋の変更は誰にも届かない
     const { room, send, peers } = attackedRoom();
@@ -91,7 +91,7 @@ describe('SEC-01: 巨大な epoch / version の偽の状態 1 通で部屋が壊
     expect(stateOf(peers.c).chat.at(-1)?.text).toBe('まだ届く？');
   });
 
-  it.skip('SEC-01: epoch = MAX_SAFE_INTEGER の偽の状態のあとも、ホスト交代で全員が新ホストにそろう', () => {
+  it('SEC-01: epoch = MAX_SAFE_INTEGER の偽の状態のあとも、ホスト交代で全員が新ホストにそろう', () => {
     // 現状：ホストが去ると引き継いだ人の epoch が MAX_SAFE_INTEGER + 1 になり、他の全員に捨てられて部屋が割れる
     const { room, send, peers } = attackedRoom();
     const cur = stateOf(peers.a);
@@ -105,7 +105,7 @@ describe('SEC-01: 巨大な epoch / version の偽の状態 1 通で部屋が壊
 });
 
 describe('SEC-04: 未知のゲーム ID を含む状態', () => {
-  it.skip('SEC-04: selectedGame / game.id が登録にない（constructor・__proto__ を含む）状態は採用しない', () => {
+  it('SEC-04: selectedGame / game.id が登録にない（constructor・__proto__ を含む）状態は採用しない', () => {
     // 現状：parseRoomState は文字列であることしか見ないので採用され、Room.tsx の Lobby が GAMES[selectedGame].id で
     // 例外を投げ、エラー境界がないため全員の画面が真っ白になる（デプロイ直後の版ずれでも起こる）
     const { room, send, peers } = attackedRoom();
@@ -128,7 +128,7 @@ describe('SEC-04: 未知のゲーム ID を含む状態', () => {
 });
 
 describe('SEC-05 / SEC-06: 異常な量・形のデータ', () => {
-  it.skip('SEC-05: 深い入れ子（10 万段）の game.state を含む状態を受けても、受信処理が例外を外に漏らさない', () => {
+  it('SEC-05: 深い入れ子（10 万段）の game.state を含む状態を受けても、受信処理が例外を外に漏らさない', () => {
     // 疑似ネットワークは JSON.stringify を通すので、Transport の受信コールバックへ直接渡す。
     // 現状：採用後のスナップショット保存（engine.saveNow の JSON.stringify）が RangeError を投げ、
     // Transport の受信コールバックまで例外が抜ける（CLAUDE.md「例外を投げない」に反する。以後の保存のたびに再発）
@@ -183,7 +183,7 @@ describe('SEC-05 / SEC-06: 異常な量・形のデータ', () => {
     expect(() => sim.clock.advance(5000)).not.toThrow();
   });
 
-  it.skip('SEC-06: 毎回違う送信元 ID の hb を大量に送られても、生存確認の表が際限なく増えない', () => {
+  it('SEC-06: 毎回違う送信元 ID の hb を大量に送られても、生存確認の表が際限なく増えない', () => {
     // 現状：lastSeen（と rate・syncReplyAt）はメンバー以外の ID も消さずに持ち続け、
     // 受信のたびに refreshOnline が全件をなめる。長時間の flood でホスト端末が重くなる。
     // engine の内部の表を直接見る（観測できる公開 API がないため。実装の名前が変わったらここも直す）

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { rng } from '../games/micro/core';
 import { GAMES } from '../games/registry';
 import { acceptAction, ackOf, createRoom, reduceRoom, type RoomAction, type RoomState } from '../room/logic';
-import { parseRoomAction, parseRoomState, parseWireMessage } from '../room/protocol';
+import { MAX_GAME_STATE_DEPTH, parseRoomAction, parseRoomState, parseWireMessage } from '../room/protocol';
 
 const CODE = 'ABCD';
 // a がホスト、b・c が参加者の部屋
@@ -145,6 +145,15 @@ describe('壊れた値の大量投入（S-02）', () => {
     expect(next?.game?.state).toBe(s0.game?.state);
   });
 
+  it('SEC-05: game.state の入れ子が上限（MAX_GAME_STATE_DEPTH）を超える状態は捨て、上限以内は受け付ける', () => {
+    const s0 = reduceRoom(room(), { type: 'startGame', online: ['a', 'b', 'c'] }, 'a', 0, GAMES);
+    const withState = (state: unknown) => ({ ...s0, game: { ...s0.game!, state } });
+    expect(parseRoomState(withState(deep(100_000)), CODE)).toBeNull();
+    expect(parseRoomState(withState(deep(MAX_GAME_STATE_DEPTH + 1)), CODE)).toBeNull();
+    expect(parseRoomState(withState(deep(MAX_GAME_STATE_DEPTH - 1)), CODE)).not.toBeNull();
+    expect(parseRoomState(s0, CODE)).not.toBeNull();
+  });
+
   it('players・chat・acks・startGame.online の件数上限を超えた状態・アクションは捨てる', () => {
     const s0 = room();
     const many = Array.from({ length: 11 }, (_, i) => ({ id: `p${i}`, name: 'n' }));
@@ -183,7 +192,7 @@ describe('プロトタイプ汚染（S-02）', () => {
     expect(parseWireMessage(msg, CODE)).toEqual({ v: 2, t: 'hb', from: 'b' });
   });
 
-  it.skip('SEC-03: Object.prototype にある名前（__proto__ / constructor / toString など）はプレイヤー ID として受け付けない', () => {
+  it('SEC-03: Object.prototype にある名前（__proto__ / constructor / toString など）はプレイヤー ID として受け付けない', () => {
     for (const id of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf']) {
       expect(parseWireMessage({ v: 2, t: 'join', from: id, name: 'X' }, CODE)).toBeNull();
       const s = room();
@@ -245,7 +254,7 @@ describe('権限：ホストしかできない操作・メンバー以外の操�
     expect(s.players.map((p) => p.id)).toEqual(['a', 'b']);
   });
 
-  it.skip('SEC-02: 処理済み seq から大きく飛んだ seq（MAX_SAFE_INTEGER など）は受け付けない', () => {
+  it('SEC-02: 処理済み seq から大きく飛んだ seq（MAX_SAFE_INTEGER など）は受け付けない', () => {
     // 現状：c を名乗って seq = MAX_SAFE_INTEGER を送ると acks.c が上限になり、
     // c の次の seq（MAX_SAFE_INTEGER + 1）は parseWireMessage で捨てられるため、c はこの部屋で二度と操作できない
     const s = room();

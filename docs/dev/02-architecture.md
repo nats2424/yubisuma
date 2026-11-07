@@ -414,12 +414,13 @@ start():
     状態があるなら: sync（ホスト以外）/ 状態配信（ホスト）、再送処理
 tick（状態がないとき）:
   connected 中、SYNC_RETRY_MS ごとに sync + join
-  connected から RESTORE_AFTER_MS 経過 かつ 他の誰からも一度も受信していない
+  connected から RESTORE_AFTER_MS 経過 かつ 状態を持つ端末（state・action・hb の送り手）から一度も受信していない
     かつ スナップショットに自分がいる → takeOverHost(snapshot) で自分がホストとして復元（AC-30）
   connected から JOIN_TIMEOUT_MS 経過 → status = notfound
 ```
 
 - 「誰からも受信していない」ことを復元の条件にするのは、生きている部屋に古いスナップショットの世代（epoch+1）を被せて巻き戻さないため。ホストが生きていれば sync に必ず状態で答える。
+- （QA-BUG-02 で変更）状態待ちの端末は sync・join（・bye）しか送らない（`resume()` の hb も状態があるときだけ送る）。そこで「状態待ちの端末の声」は復元を止める理由に数えない。2 人が同時にリロードした部屋では両方が復元し、同じ世代の競合として `compareStates`（hostId の小さい方）で 1 人に収束する。状態を持つ参加者は、sync を受けたとき直前 `SYNC_REPLY_MIN_MS` に何も送っていなければ hb を送り、生きている部屋で復元させない。
 
 ### 5.2 状態の受信
 
@@ -828,3 +829,21 @@ export type RoomHandle = {
 | P1-10 | 疑似ネットワーク（§6.1） | 送信側と受信側の条件のうち厳しい方（遅延・ゆらぎ・欠落率それぞれの最大）を使う。乱数は 1 通につき受信者ごとに 2 つ必ず引く。ネットワーク落ち（`disconnect`）中の接続試行は応答しない（`restore` で開く）。`clearDrops()` / `setAll()` を追加。`createSimRoom` に `skews` / `games` / `joinAll`、戻り値に `addPeer` / `converged` / `sent` を追加 | 全員に同じ条件を入れたとき、その値どおりになるように。条件を変えても後続の乱数列がずれないように |
 | P1-11 | テストの決定性 | `sync.test.ts` はゲーム側の `Math.random`（ラッシュの出題・seed）もシード付き乱数に差し替える（`vi.spyOn`。時計の偽装ではない） | 出題でステージの長さが変わると、通信の回数＝疑似ネットワークの乱数の消費が変わり、結果が実行ごとに変わるため |
 | P1-12 | 調整値（§7.1） | `params` のキーを確定：`whack.lifeDivisor`（6）と `timing.visibleMs`（1000）を追加。`timing` の指示文「3秒ぴったり！」は `targetMs` から作る。`nextMicroId(prev, t = TUNING)` に調整値の引数を追加（既存の呼び方はそのまま）。`startMicroRound` の `introMs` の既定値は `TUNING.rush.introMs`（2400。旧 2500 は製品コードからは使われていなかった）。`validateTuning` は §7.3 に加えて `params` の `…Ms` が正・`…Ratio` が 0〜1・`speed.everyStages` が 1 以上の整数・`speed.max` が 1 以上も見る | AC-41 の「同じ意味の数値の直書きを残さない」。当たり判定（よけろの距離 6/7 など）や配置・大きさの係数は見た目・操作感の値として各ファイルに残した |
+
+### 13.1 Phase 2 の不具合票対応（Backend：SEC-01〜06、QA-BUG-01・02・04）
+
+タイマー値（`ROOM_TIMINGS`）は**変えていない**。契約（`src/room/types.ts`）も変えていない。追加した上限値と挙動の変更は次のとおり。
+
+| # | 票 | 対象 | 内容 | 理由 |
+| --- | --- | --- | --- | --- |
+| P2-1 | SEC-01 | `logic.ts` `isImplausibleJump`・`engine.ts` `onState` | 今の状態から `epoch` が `EPOCH_JUMP_MAX`（1000）、`version` が `VERSION_JUMP_MAX`（100 万）を超えて飛んだ状態は採用しない（世代に関係なく両方見る）。自分がホストなら捨てたうえで配り直す | 巨大値の偽の状態 1 通で、以後の正しい状態が古い扱い／+1 が安全な整数を超えて捨てられ、部屋が戻らなくなるのを防ぐ。版は 5 件/秒で 1 日 ≒ 43 万なので長時間離れた参加者も追いつける |
+| P2-2 | SEC-02 | `logic.ts` `acceptAction`（`SEQ_JUMP_MAX` = 1000） | 処理済み seq + 1000 を超える seq は受け付けない | 他人の ID で巨大な seq を送り、その人を締め出すのを防ぐ。正規の再送は最大 `OUTBOX_MAX`（50）件 |
+| P2-3 | SEC-03 | `protocol.ts` `isId` | プレイヤー ID は `[A-Za-z0-9_-]` の 1〜40 文字で、`Object.prototype` にある名前（`__proto__` / `constructor` など）でないこと | 各ゲームが ID をオブジェクトのキーに使うため。正規の ID は `p_` + 英数字 |
+| P2-4 | SEC-04 | `logic.ts` `hasKnownGames`・`engine.ts` `onState` / `loadSnapshot` | `selectedGame` と `game.id` が登録（`games` の自分のプロパティ）にない状態は採用・復元しない | 未知のゲーム ID で全員の画面が真っ白になるのを防ぐ。版ずれでは古いタブがその状態を受け付けなくなる（表示側の防御は Client） |
+| P2-5 | SEC-05 | `protocol.ts` `parseRoomState`（`MAX_GAME_STATE_DEPTH` = 64）・`engine.ts` `saveNow` | `game.state` の入れ子が 64 段を超える状態は捨てる（再帰なしで数える）。スナップショットの `JSON.stringify` も try の中で行う | `JSON.stringify` の `RangeError` が受信処理の外へ漏れるのを防ぐ |
+| P2-6 | SEC-06 | `engine.ts` `pruneTables`（tick ごと） | メンバーでも現在のホストでもない ID の `lastSeen`（`OFFLINE_AFTER_MS` 経過後）・`departed`、窓を過ぎた `rate`・`syncReplyAt` を消す。メンバーの `lastSeen` は残す（P1-5 を変えない） | 毎回違う from の flood で表が際限なく増えないように |
+| P2-7 | QA-BUG-01 | `engine.ts` `checkTakeover` | 接続・復帰から `OFFLINE_AFTER_MS` の猶予は、ホストが `departed`（bye・ホストからの sync）のときは飛ばす | 猶予は古い `lastSeen` での誤判定を防ぐためのもので、明示的な離脱には不要。交代・ホストのリロード復帰が約 8 秒かかっていた |
+| P2-8 | QA-BUG-02 | `engine.ts` `tickWaiting` / `resume` / `onSync` | §5.1 の復元条件を「状態を持つ端末（state・action・hb の送り手）から受信していない」に変更。状態待ちの端末は hb を送らない。状態を持つ参加者は sync を受けたら（直前 1 秒に何も送っていなければ）hb を返す | 2 人同時リロードで、互いの sync・join を聞いた両方が復元せず部屋が消えていた。両方が復元しても同じ世代の競合として収束する |
+| P2-9 | QA-BUG-04 | `engine.ts` `onState` | 自分のいない状態を受けて `kicked` にするのは、同じ世代・同じホストのときだけ。ホストか世代が変わっていれば join し直す | 旧ホストだけが受け付けた参加者が、交代後に「外されました」になっていた。交代と kick が重なった場合は入り直せてしまうが、kick はやり直せる |
+
+- 既知の残り（票外・既存の挙動）：ホストが bye なしで消え（freeze・電池切れ）、次のホスト候補がその直後にリロードすると、候補は状態待ち（sync・join を送り続ける）なのでオンラインに見え、他の参加者は候補に譲って引き継がず、候補は状態を持つ参加者の声が聞こえるので復元もしない。修正前（`heardOther`）も同じ。対策案：メンバーからの `join`（状態待ちの印）を受けたら、その人を次のホスト候補から外す。
