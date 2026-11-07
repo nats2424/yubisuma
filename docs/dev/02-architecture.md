@@ -807,3 +807,24 @@ export type RoomHandle = {
 | メッセージ数が Free を超える | 月の途中で使えなくなる | §8。公開時は Pro 推奨。利用状況を Supabase ダッシュボードで見る |
 | 大きいチャット履歴で状態が重い | モバイル回線の帯域 | ADR-10（次フェーズで分離） |
 | `game.state` の中身は検証しない | 悪意ある「ホスト」が View を壊せる | 友達同士の前提で許容。View のエラー境界は Should（MVP-15） |
+
+---
+
+## 13. Phase 1 で変更・確定した点（Backend、B-10〜B-21）
+
+契約（§9.3 の `src/room/types.ts`）と §9.2 の export は変えていない。以下は設計の意図を保ったまま実装で決めた・調整した点。
+
+| # | 対象 | 内容 | 理由 |
+| --- | --- | --- | --- |
+| P1-1 | `supabaseLinkFactory`（§3.1） | **Phase 1 で変更**：Link ごとに `RealtimeClient`（WebSocket）を 1 つ作り、`close()` は `removeChannel` の後に `disconnect`。共有の `createClient` は使わない（`@supabase/supabase-js` が再エクスポートする `RealtimeClient` を使うので依存は増えない） | realtime-js 2.117.3 の `channel()` は同じ topic のチャンネルがあるとそれを返す。`removeChannel` は非同期なので、共有クライアントだと作り直し直後に古い（閉じかけの）チャンネルが返り、作り直しにならない。さらに古いチャンネルが閉じたときの `_remove` が topic 一致で新しいチャンネルまで一覧から消す。作り直しはソケットが死んでいる疑いがあるときなので、ソケットごと新しくする方が確実 |
+| P1-2 | `Transport`（§1.3） | 旧 `Transport`（`ready: Promise`）は §1.3 の形に置き換えた。Client は `Transport` を import していないので影響なし | 設計どおり |
+| P1-3 | `EngineDeps` | **Phase 1 で追加（後方互換）**：任意項目 `defaultGame?: string`（部屋を作るときに選ばれているゲーム。省略時は `games` の先頭）。`useRoom` は `DEFAULT_GAME` を渡す | engine を registry から独立させ、テストで別のゲーム一覧を注入できるようにするため |
+| P1-4 | ホスト喪失の判定（§5.3） | `bye` を受けた人と「ホストからの `sync`」を `departed` に入れ、ホスト喪失を即時判定する。`departed` はその人から `state` を受けたら外す（`bye` の後に bfcache から戻ったホストが配信を再開した場合など）。`lastSeen` の更新では外さない | リロードしたホストの新しい engine は sync / join を送り続けるので、`lastSeen` だけで判定すると「ホストは生きている」と見えて誰も引き継がず、全員が止まる |
+| P1-5 | 無通信検知（§3.2） | 条件に「`lastSeen` に誰かいる（全員が `bye` で去ったのではない）」を加えた | 全員が明示的に去った部屋で張り直しをしない |
+| P1-6 | 状態の採用（§5.2） | 採用した状態の `hostId` が自分で、直前まで自分がホストでなかった場合（旧ホストの退出で譲られた）、outbox の未確認分を適用してから配信する | 引き継ぎ時（§5.3）と同じく、送り先を失った操作を失わないため。配信で他の人の `departed` も外れる |
+| P1-7 | `status`（§3.3） | 状態を持っていれば、自分がまだ `players` にいなくても（join の処理待ち）`ready` を返す（旧実装と同じ）。`full` / `kicked` / `left` になった engine は以後送信しない（`full` は受信だけ続ける） | 旧実装の画面遷移を変えないため |
+| P1-8 | `retry()` | `notfound`（接続済み）からも `transport.reconnect()` で張り直し、`notfound` を解除して `connecting` に戻す | ページを読み直さずに「接続 → sync / join → 8 秒待ち」をやり直せるように |
+| P1-9 | 欠落 20% の観察（AC-17） | 欠落 20% では、ホストの定期配信（2.5 秒）が 4 回続けて落ちて参加者が誤って引き継ぐことがある（30 シード中 1 シードで発生）。その場合も状態は収束し、ライフ・クリア数は全員一致し、ミス扱いは起きない。テストは「全員のホストが 1 人に一致」までを見る | 設計どおりの値（`OFFLINE_AFTER_MS` 9 秒・`HOST_RESYNC_MS` 2.5 秒）の範囲の挙動。実機で頻発するようなら、ホストの定期配信の間隔を短くするか、喪失判定を「他の参加者からも聞こえない」ことに広げるのが次の候補 |
+| P1-10 | 疑似ネットワーク（§6.1） | 送信側と受信側の条件のうち厳しい方（遅延・ゆらぎ・欠落率それぞれの最大）を使う。乱数は 1 通につき受信者ごとに 2 つ必ず引く。ネットワーク落ち（`disconnect`）中の接続試行は応答しない（`restore` で開く）。`clearDrops()` / `setAll()` を追加。`createSimRoom` に `skews` / `games` / `joinAll`、戻り値に `addPeer` / `converged` / `sent` を追加 | 全員に同じ条件を入れたとき、その値どおりになるように。条件を変えても後続の乱数列がずれないように |
+| P1-11 | テストの決定性 | `sync.test.ts` はゲーム側の `Math.random`（ラッシュの出題・seed）もシード付き乱数に差し替える（`vi.spyOn`。時計の偽装ではない） | 出題でステージの長さが変わると、通信の回数＝疑似ネットワークの乱数の消費が変わり、結果が実行ごとに変わるため |
+| P1-12 | 調整値（§7.1） | `params` のキーを確定：`whack.lifeDivisor`（6）と `timing.visibleMs`（1000）を追加。`timing` の指示文「3秒ぴったり！」は `targetMs` から作る。`nextMicroId(prev, t = TUNING)` に調整値の引数を追加（既存の呼び方はそのまま）。`startMicroRound` の `introMs` の既定値は `TUNING.rush.introMs`（2400。旧 2500 は製品コードからは使われていなかった）。`validateTuning` は §7.3 に加えて `params` の `…Ms` が正・`…Ratio` が 0〜1・`speed.everyStages` が 1 以上の整数・`speed.max` が 1 以上も見る | AC-41 の「同じ意味の数値の直書きを残さない」。当たり判定（よけろの距離 6/7 など）や配置・大きさの係数は見た目・操作感の値として各ファイルに残した |
