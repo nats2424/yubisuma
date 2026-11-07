@@ -431,6 +431,7 @@ export class RoomEngine {
     this.cancelTick = this.d.clock.setTimeout(() => this.tick(), this.t.TICK_MS);
     if (this.terminal === 'left' || this.terminal === 'kicked') return;
     if (gap > this.t.RESUME_GAP_MS) this.resume();
+    this.pruneTables(now);
     this.refreshOnline();
     const connected = this.d.transport.status === 'connected';
     const cur = this.state;
@@ -696,6 +697,26 @@ export class RoomEngine {
 
   private isHostNow(): boolean {
     return !!this.state && this.state.hostId === this.d.me && this.terminal !== 'left' && this.terminal !== 'kicked';
+  }
+
+  // 送信元ごとの表から、もう要らない行を消す（SEC-06）。
+  // 毎回違う from の hb / sync / bye を送り続けられても、表と受信のたびの refreshOnline の走査が際限なく増えないように。
+  // メンバーと現在のホストの lastSeen は古くても残す（checkStall の「全員が去った」判定・P1-5 を変えないため）
+  private pruneTables(now: number) {
+    const cur = this.state;
+    const keep = (id: string) => !!cur && (id === cur.hostId || cur.players.some((p) => p.id === id));
+    this.lastSeen.forEach((seen, id) => {
+      if (!keep(id) && now - seen >= this.t.OFFLINE_AFTER_MS) this.lastSeen.delete(id);
+    });
+    if (cur) this.departed.forEach((id) => {
+      if (!keep(id)) this.departed.delete(id);
+    });
+    this.rate.forEach((history, id) => {
+      if (history.every((t) => t <= now - this.t.ACTION_RATE.windowMs)) this.rate.delete(id);
+    });
+    this.syncReplyAt.forEach((at, id) => {
+      if (now - at >= this.t.SYNC_REPLY_MIN_MS) this.syncReplyAt.delete(id);
+    });
   }
 
   private refreshOnline() {

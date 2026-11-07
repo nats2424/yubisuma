@@ -183,7 +183,7 @@ describe('SEC-05 / SEC-06: 異常な量・形のデータ', () => {
     expect(() => sim.clock.advance(5000)).not.toThrow();
   });
 
-  it.skip('SEC-06: 毎回違う送信元 ID の hb を大量に送られても、生存確認の表が際限なく増えない', () => {
+  it('SEC-06: 毎回違う送信元 ID の hb を大量に送られても、生存確認の表が際限なく増えない', () => {
     // 現状：lastSeen（と rate・syncReplyAt）はメンバー以外の ID も消さずに持ち続け、
     // 受信のたびに refreshOnline が全件をなめる。長時間の flood でホスト端末が重くなる。
     // engine の内部の表を直接見る（観測できる公開 API がないため。実装の名前が変わったらここも直す）
