@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>案B ポップ・ステッカー｜SUKIMA デザインモック</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   案B「ポップ・ステッカー」デザイントークン
+   太い墨線＋平塗り＋ずらした影。指示は極太の描き文字風
+   ========================================================= */
+:root {
+  --bg: #fff4e0;
+  --surface: #ffffff;
+  --surface-2: #ffecc9;
+  --line: #1c1a17;          /* 墨線・影 */
+  --text: #1c1a17;
+  --muted: #5d564c;
+  --accent: #ff5b3a;        /* 主ボタン（トマト）。文字は墨 */
+  --accent-ink: #1c1a17;
+  --yellow: #ffd23f;
+  --blue: #4a74f5;
+  --green: #1f9d57;
+  --pink: #ff9cc2;
+  --teal: #2bb3a3;
+  --purple: #9b7bf0;
+  --heart: #ff4b4b;
+  --good: #137a43;
+  --bad: #c42f2f;
+  --stage-bg: #ffd23f;
+  --shadow: 4px 4px 0 var(--line);
+  --radius: 16px;
+  --font-body: 'Noto Sans JP', 'Hiragino Sans', system-ui, sans-serif;
+  --font-pop: 'Dela Gothic One', 'Noto Sans JP', sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #1d1a17;
+    --surface: #2b2723;
+    --surface-2: #383129;
+    --line: #000000;
+    --text: #f7efe0;
+    --muted: #bdb2a1;
+    --accent: #ff6a4a;
+    --stage-bg: #3a3226;
+    --good: #5fd894;
+    --bad: #ff8a7a;
+    --shadow: 4px 4px 0 #000;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 16px; line-height: 1.65; font-weight: 500; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, p { margin: 0; }
+svg { display: block; flex: none; }
+.ln { stroke: var(--line); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+
+.doc-head { max-width: 1080px; margin: 0 auto; padding: 20px 16px 4px; font-size: 13px; color: var(--muted); }
+.doc-head b { color: var(--text); }
+.screen-label { max-width: 1080px; margin: 40px auto 0; padding: 0 16px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; display: flex; align-items: center; gap: 8px; }
+.screen-label::after { content: ''; flex: 1; border-top: 2px dashed currentColor; opacity: 0.4; }
+.screen { max-width: 1080px; margin: 12px auto 0; border: 2.5px solid var(--line); border-radius: 18px; overflow: hidden; }
+@media (max-width: 600px) { .screen { border-left: 0; border-right: 0; border-radius: 0; } }
+
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px; background: var(--surface); border-bottom: 2.5px solid var(--line); }
+.logo { position: relative; display: inline-block; flex: none; font-family: var(--font-pop); font-size: 17px; line-height: 1; letter-spacing: 0.06em; color: #fff; background: var(--accent); padding: 6px 10px 7px; border: 2.5px solid var(--line); border-radius: 10px; transform: rotate(-3deg); box-shadow: 3px 3px 0 var(--line); -webkit-text-stroke: 1px var(--line); paint-order: stroke fill; overflow: hidden; }
+/* ロゴを斜めに切る「隙間」 */
+.logo .slit { display: inline-block; width: 7px; height: 1.6em; margin: -0.4em 2px -0.4em 3px; vertical-align: middle; background: var(--bg); border-left: 2px solid var(--line); border-right: 2px solid var(--line); transform: rotate(14deg); }
+.btn { white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 50px; padding: 0 20px; font: inherit; font-weight: 900; font-size: 16px; color: var(--text); background: var(--surface); border: 2.5px solid var(--line); border-radius: 999px; box-shadow: var(--shadow); cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); font-size: 18px; }
+.btn.block { display: flex; width: 100%; }
+.btn.small { min-height: 40px; padding: 0 12px; font-size: 14px; box-shadow: 2px 2px 0 var(--line); }
+.btn.ghost { padding: 0 6px; background: transparent; border-color: transparent; box-shadow: none; color: var(--muted); }
+.panel { background: var(--surface); border: 2.5px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 16px; }
+.panel-title { font-family: var(--font-pop); font-size: 18px; font-weight: 400; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.field { display: grid; gap: 6px; }
+.label { font-size: 14px; font-weight: 700; color: var(--muted); }
+.input { min-height: 52px; padding: 0 16px; font: inherit; font-size: 17px; color: var(--text); background: var(--bg); border: 2.5px solid var(--line); border-radius: 12px; width: 100%; }
+.input::placeholder { color: var(--muted); }
+.pill { font-size: 12px; font-weight: 700; padding: 2px 10px; border: 2px solid var(--line); border-radius: 999px; background: var(--surface-2); font-family: var(--font-body); }
+.muted { color: var(--muted); }
+
+/* ① トップ */
+.home { padding: 22px 16px 28px; display: grid; gap: 22px; }
+.hero { display: grid; gap: 12px; position: relative; }
+.eyebrow { font-weight: 700; font-size: 14px; color: var(--muted); }
+.hero h1 { font-family: var(--font-pop); font-weight: 400; font-size: 31px; line-height: 1.3; }
+.hero h1 .mark { display: inline-block; background: var(--yellow); color: #1c1a17; padding: 0 8px; border: 2.5px solid var(--line); border-radius: 8px; transform: rotate(-2deg); box-shadow: 3px 3px 0 var(--line); margin-top: 6px; }
+.lead { font-size: 15px; color: var(--muted); }
+.stickers { display: flex; gap: 8px; flex-wrap: wrap; }
+.sticker { font-size: 13px; font-weight: 900; padding: 4px 12px; border: 2px solid var(--line); border-radius: 999px; background: var(--surface); }
+.sticker:nth-child(1) { transform: rotate(-3deg); background: var(--pink); color: #1c1a17; }
+.sticker:nth-child(2) { transform: rotate(2deg); background: var(--teal); color: #1c1a17; }
+.sticker:nth-child(3) { transform: rotate(-1deg); background: var(--yellow); color: #1c1a17; }
+.entry { display: grid; gap: 14px; }
+.divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; font-weight: 700; }
+.divider::before, .divider::after { content: ''; flex: 1; border-top: 2px dashed var(--muted); opacity: 0.5; }
+.join-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.code-input { font-family: var(--font-pop); letter-spacing: 0.3em; }
+.practice-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: var(--surface-2); text-decoration: none; color: var(--text); font-weight: 900; border: 2.5px solid var(--line); border-radius: 14px; }
+.practice-link small { display: block; font-weight: 500; font-size: 13px; color: var(--muted); }
+.catalog h2 { font-family: var(--font-pop); font-weight: 400; font-size: 21px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.catalog h2 span { font-family: var(--font-body); font-size: 13px; color: var(--muted); font-weight: 700; }
+.catalog-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.item { display: flex; gap: 12px; align-items: center; padding: 12px; background: var(--surface); border: 2.5px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.item h3 { font-size: 17px; font-weight: 900; }
+.item p { font-size: 14px; color: var(--muted); line-height: 1.5; }
+.item .meta { font-size: 12px; font-weight: 700; margin-top: 2px; }
+@media (min-width: 900px) {
+  .home { grid-template-columns: 1.15fr 1fr; padding: 44px 40px; column-gap: 48px; align-items: start; }
+  .hero h1 { font-size: 46px; }
+  .catalog { grid-column: 1 / -1; }
+  .catalog-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+}
+
+/* ② ロビー */
+.join-wrap { padding: 26px 16px; display: grid; place-items: center; background: repeating-linear-gradient(-45deg, transparent 0 14px, rgb(255 91 58 / 0.07) 14px 28px); }
+.join-card { width: 100%; max-width: 440px; display: grid; gap: 16px; }
+.invite { display: inline-flex; align-self: start; justify-self: start; font-size: 13px; font-weight: 900; padding: 3px 12px; border: 2px solid var(--line); border-radius: 999px; background: var(--yellow); color: #1c1a17; transform: rotate(-2deg); }
+.join-card h2 { font-size: 22px; font-weight: 900; line-height: 1.5; }
+.join-card h2 b { font-family: var(--font-pop); font-weight: 400; font-size: 26px; letter-spacing: 0.12em; background: var(--surface-2); border: 2.5px solid var(--line); border-radius: 10px; padding: 0 8px; margin: 0 4px; }
+.peek { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface-2); border-radius: 12px; font-size: 14px; font-weight: 700; }
+.avatars { display: flex; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 900; color: #1c1a17; border: 2px solid var(--line); margin-right: -6px; }
+.note { font-size: 13px; color: var(--muted); text-align: center; }
+.after { border-top: 2.5px solid var(--line); }
+.after-label { padding: 10px 16px; font-size: 12px; font-weight: 700; color: var(--muted); background: var(--surface-2); border-bottom: 2.5px solid var(--line); }
+.room-meta { display: flex; align-items: center; gap: 6px; }
+.room-code { display: none; font-size: 12px; font-weight: 700; color: var(--muted); }
+.room-code b { font-family: var(--font-pop); font-weight: 400; font-size: 16px; color: var(--text); letter-spacing: 0.08em; }
+.lobby { padding: 18px 16px; display: grid; gap: 16px; }
+.now-head { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.now-head h3 { font-family: var(--font-pop); font-weight: 400; font-size: 21px; line-height: 1.3; }
+.now-head p { font-size: 14px; color: var(--muted); }
+.rules { margin: 0 0 14px; padding-left: 1.3em; font-size: 15px; display: grid; gap: 4px; }
+.option-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.segmented { display: flex; border: 2.5px solid var(--line); border-radius: 999px; overflow: hidden; }
+.segmented span { min-width: 52px; min-height: 44px; display: grid; place-items: center; font-weight: 900; background: var(--surface); }
+.segmented span + span { border-left: 2.5px solid var(--line); }
+.segmented .on { background: var(--yellow); color: #1c1a17; }
+.waiting { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--surface-2); border-radius: 12px; font-weight: 700; }
+.dots { display: flex; gap: 4px; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); border: 1.5px solid var(--line); }
+.members { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.members li { display: flex; align-items: center; gap: 10px; min-height: 40px; font-weight: 700; }
+.on, .off { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); flex: none; }
+.on { background: var(--green); }
+.off { background: transparent; border-style: dashed; border-color: var(--muted); }
+.members .offline { color: var(--muted); }
+.members .pill { margin-left: auto; }
+.picker { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.opt { display: flex; gap: 8px; align-items: center; padding: 8px; background: var(--surface); border: 2.5px solid var(--line); border-radius: 12px; min-height: 44px; }
+.opt.sel { background: var(--yellow); color: #1c1a17; box-shadow: 3px 3px 0 var(--line); }
+.opt.sel small { color: #4a443b; }
+.opt b { display: block; font-size: 13px; font-weight: 900; line-height: 1.3; }
+.opt small { font-size: 11px; color: var(--muted); font-weight: 700; }
+@media (min-width: 900px) {
+  .room-code { display: inline; margin-right: 6px; }
+  .lobby { grid-template-columns: 1.4fr 1fr; padding: 26px; gap: 22px; align-items: start; }
+  .lobby-main, .lobby-side { display: grid; gap: 22px; align-content: start; }
+  .picker { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 899px) { .opt svg { display: none; } .lobby-main, .lobby-side { display: contents; } .members-panel { order: 2; } .picker-panel { order: 3; } }
+
+/* ③ プレイ中 */
+.play { padding: 14px 16px 24px; display: grid; gap: 16px; }
+.hud { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.stage-no { font-family: var(--font-pop); font-size: 20px; padding: 2px 12px; background: var(--surface); border: 2.5px solid var(--line); border-radius: 999px; box-shadow: 2px 2px 0 var(--line); }
+.hearts { display: flex; gap: 3px; }
+.heart-full { fill: var(--heart); }
+.heart-lost { fill: none; stroke-dasharray: 3 3; }
+.heart-lost.ln { stroke: var(--muted); }
+.stage-area { background: var(--stage-bg); background-image: radial-gradient(rgb(0 0 0 / 0.1) 1.5px, transparent 2px); background-size: 14px 14px; border: 2.5px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); overflow: hidden; }
+.stage-top { padding: 14px 14px 10px; display: grid; gap: 8px; }
+.order { font-family: var(--font-pop); font-size: 52px; line-height: 1.1; color: #fff; -webkit-text-stroke: 7px #1c1a17; paint-order: stroke fill; transform: rotate(-4deg); transform-origin: left center; text-shadow: 4px 4px 0 #1c1a17; }
+.order-hint { font-size: 14px; font-weight: 900; color: #1c1a17; background: #fff; border: 2px solid #1c1a17; border-radius: 999px; padding: 2px 12px; justify-self: start; }
+.timebar { height: 16px; border: 2.5px solid #1c1a17; border-radius: 999px; background: #fff; overflow: hidden; }
+.timebar span { display: block; height: 100%; width: 60%; background: var(--accent); border-right: 2.5px solid #1c1a17; background-image: repeating-linear-gradient(90deg, transparent 0 18px, rgb(0 0 0 / 0.18) 18px 20px); }
+.field-area { position: relative; height: 300px; }
+.target { position: absolute; width: 64px; height: 64px; border-radius: 50%; background: radial-gradient(circle, #ff5b3a 0 30%, #fff 30% 55%, #ff5b3a 55%); border: 2.5px solid #1c1a17; box-shadow: 3px 3px 0 #1c1a17; }
+.target.hit { background: #fff; transform: scale(0.8) rotate(10deg); opacity: 0.7; }
+.target.hit::after { content: 'パン！'; position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-pop); font-size: 15px; color: #1c1a17; }
+.verdict { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-5deg); display: grid; place-items: center; }
+.verdict svg { width: 270px; height: 170px; }
+.verdict .burst { stroke: #1c1a17; stroke-width: 3; stroke-linejoin: round; }
+.verdict .txt { position: absolute; display: flex; align-items: center; gap: 6px; font-family: var(--font-pop); font-size: 40px; color: #fff; -webkit-text-stroke: 6px #1c1a17; paint-order: stroke fill; }
+.verdict .txt i { font-style: normal; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #fff; border: 3px solid #1c1a17; font-size: 22px; -webkit-text-stroke: 0; color: #1c1a17; font-family: var(--font-body); font-weight: 900; }
+.verdict.ng .txt i { border-radius: 8px; }
+.variants { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.mini { position: relative; height: 190px; border: 2.5px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--stage-bg); background-image: radial-gradient(rgb(0 0 0 / 0.1) 1.5px, transparent 2px); background-size: 14px 14px; }
+.mini .cap { position: absolute; top: 8px; left: 10px; font-size: 11px; font-weight: 900; padding: 0 8px; background: #fff; color: #1c1a17; border: 2px solid #1c1a17; border-radius: 999px; z-index: 1; }
+.mini .verdict { top: 56%; }
+.mini .verdict svg { width: 160px; height: 120px; }
+.mini .verdict .txt { font-size: 26px; -webkit-text-stroke: 5px #1c1a17; flex-direction: column; gap: 2px; }
+.mini .verdict .txt small { font-family: var(--font-body); font-size: 11px; font-weight: 900; -webkit-text-stroke: 0; color: #1c1a17; background: #fff; border-radius: 999px; padding: 0 6px; border: 1.5px solid #1c1a17; }
+.intro-c { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 2px; text-align: center; padding: 22px 8px 0; }
+.intro-c .lbl { font-family: var(--font-pop); font-size: 13px; color: #fff; background: var(--blue); border: 2px solid #1c1a17; border-radius: 6px; padding: 0 8px; transform: rotate(-3deg); }
+.intro-c .t { font-family: var(--font-pop); font-size: 25px; color: #fff; -webkit-text-stroke: 5px #1c1a17; paint-order: stroke fill; line-height: 1.2; }
+.intro-c .h { font-size: 11px; line-height: 1.4; font-weight: 900; color: #1c1a17; }
+.intro-c .n { font-family: var(--font-pop); font-size: 30px; line-height: 1; color: var(--accent); -webkit-text-stroke: 4px #1c1a17; paint-order: stroke fill; }
+.tally { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.tally li { display: flex; align-items: center; gap: 8px; min-height: 40px; font-weight: 700; font-size: 15px; }
+.tally .name { flex: 1; }
+.tally .out { color: var(--muted); }
+.tally .out .name { text-decoration: line-through; }
+.tag { font-size: 12px; font-weight: 900; padding: 0 8px; border-radius: 999px; border: 2px solid currentColor; }
+.tag.good { color: var(--good); }
+.tag.bad { color: var(--bad); }
+.track { display: flex; gap: 4px; align-items: center; margin-top: 6px; }
+.track i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); }
+.track i.done { background: var(--text); }
+.track i.cur { background: var(--accent); transform: scale(1.3); }
+.track i.flag { border-radius: 3px; background: var(--yellow); }
+@media (min-width: 900px) {
+  .play { grid-template-columns: minmax(0, 560px) 340px; justify-content: center; column-gap: 28px; padding: 26px; }
+  .play-main, .play-side { display: grid; gap: 16px; align-content: start; }
+  .order { font-size: 62px; }
+  .field-area { height: 340px; }
+}
+@media (max-width: 899px) { .play-main, .play-side { display: contents; } }
+</style>
+</head>
+<body>
+<!-- 再利用する SVG（ゲームアイコン・ハート・判定の吹き出し） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-wolf" viewBox="0 0 48 48"><circle class="ln" cx="24" cy="24" r="21" fill="#9b7bf0"/><path class="ln" d="M12 31 L13 11 L20 18 L28 18 L35 11 L36 31 Q24 41 12 31Z" fill="#fff"/><circle cx="19" cy="25" r="2.2" fill="#1c1a17"/><circle cx="29" cy="25" r="2.2" fill="#1c1a17"/><path class="ln" d="M22 31 L24 33 L26 31" fill="none"/></symbol>
+    <symbol id="i-majority" viewBox="0 0 48 48"><circle class="ln" cx="24" cy="24" r="21" fill="#2bb3a3"/><path class="ln" d="M24 11 V36 M14 15 H34 M18 38 H30" fill="none"/><path class="ln" d="M9 26 L14 15 L19 26 Z M29 26 L34 15 L39 26 Z" fill="#fff"/></symbol>
+    <symbol id="i-reaction" viewBox="0 0 48 48"><circle class="ln" cx="24" cy="24" r="21" fill="#ffd23f"/><path class="ln" d="M27 8 L14 27 H23 L20 40 L34 20 H25 Z" fill="#fff"/></symbol>
+    <symbol id="i-rush" viewBox="0 0 48 48"><circle class="ln" cx="24" cy="24" r="21" fill="#ff5b3a"/><path class="ln" d="M24 8 L28 18 L39 15 L31 24 L39 33 L28 30 L24 40 L20 30 L9 33 L17 24 L9 15 L20 18 Z" fill="#fff"/></symbol>
+    <symbol id="i-yubi" viewBox="0 0 48 48"><circle class="ln" cx="24" cy="24" r="21" fill="#ff9cc2"/><path class="ln" d="M17 22 H21 L24 11 Q28 11 28 16 L27 21 H34 Q37 22 35 26 L33 35 Q32 37 29 37 H17 Z" fill="#fff"/><path class="ln" d="M12 22 H17 V37 H12 Z" fill="#fff"/></symbol>
+    <symbol id="i-daifugo" viewBox="0 0 48 48"><circle class="ln" cx="24" cy="24" r="21" fill="#4a74f5"/><rect class="ln" x="15" y="10" width="18" height="28" rx="3" fill="#fff"/><path class="ln" d="M18 22 L19 15 L22 19 L24 14 L26 19 L29 15 L30 22 Z" fill="#ffd23f"/><path d="M24 26 L28 31 H20 Z" fill="#1c1a17"/></symbol>
+    <symbol id="heart" viewBox="0 0 28 26"><path class="ln heart-full" d="M14 24 C4 17 2 12 2 8 C2 4 5 2 8 2 C11 2 13 4 14 6 C15 4 17 2 20 2 C23 2 26 4 26 8 C26 12 24 17 14 24Z"/><path d="M7 7 Q8 5 10 5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+    <symbol id="heart-lost" viewBox="0 0 28 26"><path class="ln heart-lost" d="M14 24 C4 17 2 12 2 8 C2 4 5 2 8 2 C11 2 13 4 14 6 C15 4 17 2 20 2 C23 2 26 4 26 8 C26 12 24 17 14 24Z"/></symbol>
+    <symbol id="burst-ok" viewBox="0 0 270 170"><path class="burst" fill="#1f9d57" d="M135 6 L156 34 L196 14 L198 50 L250 40 L230 72 L266 90 L226 106 L248 140 L198 132 L190 164 L156 140 L132 166 L112 138 L74 162 L72 128 L22 138 L44 104 L4 88 L42 70 L22 36 L72 46 L78 12 L112 34 Z"/></symbol>
+    <symbol id="burst-ng" viewBox="0 0 270 170"><path class="burst" fill="#4a74f5" d="M20 30 Q60 10 100 26 Q140 6 180 24 Q230 8 252 36 Q270 70 246 96 Q266 130 226 146 Q190 168 150 148 Q110 170 72 150 Q26 160 18 120 Q0 90 22 66 Q4 44 20 30Z"/></symbol>
+  </defs>
+</svg>
+
+<p class="doc-head"><b>案B「ポップ・ステッカー」</b>（ドット絵以外の比較案）　太い墨線と平塗りのステッカー、指示は極太の描き文字風。推奨表示：ライト（ダークも同じトークンで成立）</p>
+
+<p class="screen-label">① トップ</p>
+<section class="screen">
+  <header class="topbar"><span class="logo">SUKI<i class="slit"></i>MA</span></header>
+  <main class="home">
+    <section class="hero">
+      <p class="eyebrow">隙間時間の、ちょっとした遊び場</p>
+      <h1>URLを送るだけで、<br><span class="mark">すぐにみんなで。</span></h1>
+      <p class="lead">登録不要・ダウンロード不要。スキマ時間にサクッと1〜5分、週末はじっくり何戦も。スマホでもPCでも。</p>
+      <div class="stickers"><span class="sticker">登録不要</span><span class="sticker">ダウンロード不要</span><span class="sticker">1〜10人</span></div>
+    </section>
+    <section class="panel entry">
+      <label class="field"><span class="label">ニックネーム</span><input class="input" placeholder="10文字まで" value="ユウキ"></label>
+      <button class="btn primary block">部屋を作る</button>
+      <div class="divider">コードで参加</div>
+      <div class="join-row"><input class="input code-input" placeholder="ABCD" aria-label="ルームコード"><button class="btn">参加</button></div>
+      <a class="practice-link" href="#"><span>ひとりでミニゲームに挑戦<small>ライフ4つで、どこまで行ける？</small></span><span aria-hidden="true">→</span></a>
+    </section>
+    <section class="catalog">
+      <h2>サクッと<span>1〜5分。待ち時間やちょっとした休憩に</span></h2>
+      <ul class="catalog-grid">
+        <li class="item"><svg width="52" height="52"><use href="#i-wolf"/></svg><div><h3>ワードウルフ</h3><p>1人だけ違うお題。会話から少数派を見抜け</p><p class="meta">3〜10人 · 約5分</p></div></li>
+        <li class="item"><svg width="52" height="52"><use href="#i-majority"/></svg><div><h3>多数派ゲーム</h3><p>「みんなはどっち？」を読み当てる</p><p class="meta">3〜10人 · 約3分</p></div></li>
+        <li class="item"><svg width="52" height="52"><use href="#i-reaction"/></svg><div><h3>反射神経バトル</h3><p>画面が光った瞬間にタップ。一番速いのは誰だ</p><p class="meta">1〜10人 · 約1分</p></div></li>
+        <li class="item"><svg width="52" height="52"><use href="#i-rush"/></svg><div><h3>ミニゲームラッシュ</h3><p>数秒のミニゲームが次々に。どこまで生き残れるか</p><p class="meta">1〜10人 · 約2〜5分</p></div></li>
+        <li class="item"><svg width="52" height="52"><use href="#i-yubi"/></svg><div><h3>指スマ</h3><p>いっせーの！で上がる親指の合計を当てる</p><p class="meta">2〜8人 · 約3〜5分</p></div></li>
+      </ul>
+    </section>
+    <section class="catalog">
+      <h2>じっくり<span>20分〜。腰を据えて何戦も遊べる</span></h2>
+      <ul class="catalog-grid">
+        <li class="item"><svg width="52" height="52"><use href="#i-daifugo"/></svg><div><h3>大富豪</h3><p>おなじみのトランプゲーム。ラウンドを重ねて頂点へ</p><p class="meta">3〜6人 · 20〜40分</p></div></li>
+      </ul>
+    </section>
+  </main>
+</section>
+
+<p class="screen-label">② ルーム（招待 URL から来た人が最初に見る画面 → 参加後のロビー）</p>
+<section class="screen">
+  <header class="topbar"><span class="logo">SUKI<i class="slit"></i>MA</span></header>
+  <div class="join-wrap">
+    <form class="panel join-card">
+      <span class="invite">友達からの招待です</span>
+      <h2>部屋<b>K7MQ</b>に参加</h2>
+      <div class="peek">
+        <span class="avatars"><span class="avatar" style="background:var(--yellow)">ユ</span><span class="avatar" style="background:var(--teal)">ケ</span><span class="avatar" style="background:var(--pink)">ハ</span></span>
+        <span>ユウキさんたち 3人が待っています</span>
+      </div>
+      <label class="field"><span class="label">ニックネーム</span><input class="input" placeholder="10文字まで" value="ミサキ"></label>
+      <button class="btn primary block" type="button">参加する</button>
+      <p class="note">登録・インストールは不要です</p>
+    </form>
+  </div>
+  <div class="after">
+    <p class="after-label">参加後のロビー（ゲスト視点）</p>
+    <header class="topbar">
+      <span class="logo">SUKI<i class="slit"></i>MA</span>
+      <div class="room-meta">
+        <span class="room-code">ROOM <b>K7MQ</b></span>
+        <button class="btn small">招待する</button>
+        <button class="btn small" aria-label="チャットを開く"><svg width="20" height="18" viewBox="0 0 20 18"><path class="ln" d="M3 2 H17 Q18 2 18 3 V11 Q18 12 17 12 H8 L4 16 V12 H3 Q2 12 2 11 V3 Q2 2 3 2Z" fill="none"/></svg></button>
+        <button class="btn small ghost">退出</button>
+      </div>
+    </header>
+    <div class="lobby">
+      <div class="lobby-main">
+        <section class="panel">
+          <div class="panel-title">次に遊ぶゲーム <span class="pill">ホストが選びます</span></div>
+          <div class="now-head"><svg width="56" height="56"><use href="#i-rush"/></svg><div><h3>ミニゲームラッシュ</h3><p>数秒のミニゲームが次々に。どこまで生き残れるか</p></div></div>
+          <ol class="rules">
+            <li>「連打！」「よけろ！」「止めろ！」など、数秒で終わるミニゲームが次々に出ます。全員同時に挑戦。</li>
+            <li>失敗するとライフが1つ減り、0になったら脱落。5ステージごとにスピードアップ。</li>
+            <li>最後まで生き残った人の勝ち。順位はクリアしたステージ数で決まります。</li>
+          </ol>
+          <div class="option-row"><span class="label">ライフ</span><div class="segmented"><span>3</span><span class="on">4</span><span>5</span></div></div>
+          <p class="waiting"><span class="dots"><i></i><i></i><i></i></span>ホストがゲームを開始するのを待っています…</p>
+        </section>
+        <section class="panel picker-panel">
+          <div class="panel-title">ゲームを選ぶ <span class="pill">ホストが選びます</span></div>
+          <div class="picker">
+            <span class="opt"><svg width="30" height="30"><use href="#i-wolf"/></svg><span><b>ワードウルフ</b><small>3〜10人 · 約5分</small></span></span>
+            <span class="opt"><svg width="30" height="30"><use href="#i-majority"/></svg><span><b>多数派ゲーム</b><small>3〜10人 · 約3分</small></span></span>
+            <span class="opt"><svg width="30" height="30"><use href="#i-reaction"/></svg><span><b>反射神経バトル</b><small>1〜10人 · 約1分</small></span></span>
+            <span class="opt sel"><svg width="30" height="30"><use href="#i-rush"/></svg><span><b>ミニゲームラッシュ</b><small>1〜10人 · 約2〜5分</small></span></span>
+            <span class="opt"><svg width="30" height="30"><use href="#i-yubi"/></svg><span><b>指スマ</b><small>2〜8人 · 約3〜5分</small></span></span>
+            <span class="opt"><svg width="30" height="30"><use href="#i-daifugo"/></svg><span><b>大富豪</b><small>3〜6人 · 20〜40分</small></span></span>
+          </div>
+        </section>
+      </div>
+      <div class="lobby-side">
+        <section class="panel members-panel">
+          <div class="panel-title">メンバー 4人</div>
+          <ul class="members">
+            <li><span class="on" aria-label="オンライン"></span>ユウキ<span class="pill">ホスト</span></li>
+            <li><span class="on" aria-label="オンライン"></span>ミサキ<span class="muted">（あなた）</span></li>
+            <li><span class="on" aria-label="オンライン"></span>ケンジ</li>
+            <li class="offline"><span class="off" aria-label="オフライン"></span>ハルカ<span>（オフライン）</span></li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </div>
+</section>
+
+<p class="screen-label">③ ミニゲームラッシュ（プレイ中・判定表示）</p>
+<section class="screen">
+  <header class="topbar">
+    <span class="logo">SUKI<i class="slit"></i>MA</span>
+    <div class="room-meta">
+      <span class="room-code">ROOM <b>K7MQ</b></span>
+      <button class="btn small" aria-label="チャットを開く"><svg width="20" height="18" viewBox="0 0 20 18"><path class="ln" d="M3 2 H17 Q18 2 18 3 V11 Q18 12 17 12 H8 L4 16 V12 H3 Q2 12 2 11 V3 Q2 2 3 2Z" fill="none"/></svg></button>
+      <button class="btn small ghost">退出</button>
+    </div>
+  </header>
+  <div class="play">
+    <div class="play-main">
+      <div class="hud">
+        <div>
+          <span class="stage-no">STAGE 7</span>
+          <div class="track" aria-label="7ステージ目"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done flag"></i><i class="done"></i><i class="cur"></i><i></i><i></i><i class="flag"></i></div>
+        </div>
+        <span class="hearts" aria-label="ライフ 3"><svg width="30" height="28"><use href="#heart"/></svg><svg width="30" height="28"><use href="#heart"/></svg><svg width="30" height="28"><use href="#heart"/></svg><svg width="30" height="28"><use href="#heart-lost"/></svg></span>
+      </div>
+      <div class="stage-area">
+        <div class="stage-top">
+          <p class="order">タッチ！</p>
+          <p class="order-hint">出てきた的をタップ</p>
+          <div class="timebar" aria-label="残り時間"><span></span></div>
+        </div>
+        <div class="field-area">
+          <span class="target hit" style="left:8%;top:6%"></span>
+          <span class="target" style="left:68%;top:4%"></span>
+          <span class="target" style="left:14%;top:72%"></span>
+          <span class="target hit" style="left:70%;top:72%"></span>
+          <div class="verdict ok"><svg viewBox="0 0 270 170"><use href="#burst-ok"/></svg><span class="txt"><i>○</i>クリア！</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="play-side">
+      <div class="variants">
+        <div class="mini"><span class="cap">判定：失敗</span>
+          <div class="verdict ng"><svg viewBox="0 0 270 170"><use href="#burst-ng"/></svg><span class="txt">ミス！<small>ライフが1つ減った</small></span></div>
+        </div>
+        <div class="mini"><span class="cap">予告</span>
+          <div class="intro-c"><span class="lbl">SPEED UP!</span><span class="t">よけろ！</span><span class="h">左右に動かして落下物をよける</span><span class="n">3</span></div>
+        </div>
+      </div>
+      <section class="panel">
+        <div class="panel-title">残り 3人</div>
+        <ul class="tally">
+          <li><span class="name">ユウキ</span><span class="tag good">済</span><span class="hearts"><svg width="20" height="19"><use href="#heart"/></svg><svg width="20" height="19"><use href="#heart"/></svg><svg width="20" height="19"><use href="#heart"/></svg><svg width="20" height="19"><use href="#heart"/></svg></span></li>
+          <li><span class="name">ミサキ<span class="muted">（あなた）</span></span><span class="tag good">済</span><span class="hearts"><svg width="20" height="19"><use href="#heart"/></svg><svg width="20" height="19"><use href="#heart"/></svg><svg width="20" height="19"><use href="#heart"/></svg><svg width="20" height="19"><use href="#heart-lost"/></svg></span></li>
+          <li><span class="name">ケンジ</span><span class="tag bad">ミス</span><span class="hearts"><svg width="20" height="19"><use href="#heart"/></svg><svg width="20" height="19"><use href="#heart-lost"/></svg><svg width="20" height="19"><use href="#heart-lost"/></svg><svg width="20" height="19"><use href="#heart-lost"/></svg></span></li>
+          <li class="out"><span class="name">ハルカ</span><span class="tag">脱落</span><span class="hearts"><svg width="20" height="19"><use href="#heart-lost"/></svg><svg width="20" height="19"><use href="#heart-lost"/></svg><svg width="20" height="19"><use href="#heart-lost"/></svg><svg width="20" height="19"><use href="#heart-lost"/></svg></span></li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</section>
+<p class="doc-head" style="padding-bottom:40px">モック：実データではありません。「ユウキさんたち 3人が待っています」「ライフが1つ減った」などは提案文言です。</p>
+</body>
+</html>
