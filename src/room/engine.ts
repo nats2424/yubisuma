@@ -366,7 +366,10 @@ export class RoomEngine {
       this.offset = Math.max(...this.offsetSamples);
     }
     const prevHost = cur?.hostId;
-    const wasMember = this.wasMember;
+    // 外されたと判断できるのは、同じホスト・同じ世代のまま自分が消えたときだけ（kick はホストが今の世代で行う）。
+    // ホストが変わって自分がいないのは、旧ホストだけが自分の参加を受け付けていた取りこぼしなので、入り直す（QA-BUG-04）
+    const sameReign = !!cur && cur.epoch === msg.state.epoch && cur.hostId === msg.state.hostId;
+    const wasMember = this.wasMember && sameReign;
     const wasHost = this.isHostNow();
     this.setState(msg.state);
     // 自分がホストでなくなったら、ゲームのタイマーと配信予定を止める（AC-27）
