@@ -61,15 +61,42 @@ VITE_SUPABASE_ANON_KEY=eyJ...
 
 ## 公開（デプロイ）
 
-`npm run build` で出力される `dist/` は静的ファイルだけなので、Vercel / Netlify / Cloudflare Pages / GitHub Pages などにそのまま置けます。
-環境変数 `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` をホスティング側にも設定してください。
-GitHub Pages のようにサブパスで公開する場合は `VITE_BASE=/yubisuma/` も設定します。
+`npm run build` で出力される `dist/` は静的ファイルだけなので、Vercel / Netlify / Cloudflare Pages / GitHub Pages などにそのまま置けます。サーバー側のプログラムやデータベースは不要です。
+
+### Vercel で公開する（おすすめ）
+
+1. Vercel で「Add New → Project」から、このリポジトリを連携（Import）する
+2. ビルドの設定を次のようにする
+   - Framework Preset：`Vite`
+   - Build Command：`npm run build`
+   - Output Directory：`dist`
+3. 「Environment Variables」に次の 2 つを、**Production と Preview の両方**に設定する
+   - `VITE_SUPABASE_URL`（例：`https://xxxx.supabase.co`）
+   - `VITE_SUPABASE_ANON_KEY`（Supabase の `anon public` キー）
+4. Deploy する
+
+- 環境変数は**ビルド時に埋め込まれます**（Vite の仕様）。値を追加・変更したら、必ず再デプロイしてください。
+- 入れ忘れるとデモモードのままになり、トップに「デモモード」の帯が出ます。公開後にトップを開いて、帯が出ていないことを確認してください。
+- URL はハッシュ形式（`#/r/ABCD`）なので、リライト設定（`vercel.json`）は不要です。ルートで公開するので `VITE_BASE` は設定しません。
+- Supabase 側では、Realtime の設定「Private channels only（公開チャンネルを禁止）」を**無効**にしておきます（公開チャンネルを使うため）。テーブル作成や SQL は不要です。
+- クライアントに含めてよいのは anon キーだけです。`service_role` キーは絶対に設定しないでください。
+
+### サブパスで公開する（GitHub Pages など）
+
+`https://<ユーザー名>.github.io/yubisuma/` のようにサブパスに置く場合は、ビルド時に `VITE_BASE=/yubisuma/` を設定します。JS・CSS・favicon が `/yubisuma/` 配下を指していることを、次のコマンドで確認できます。
+
+```bash
+VITE_BASE=/yubisuma/ npm run build && grep -E 'src=|href=' dist/index.html
+```
 
 ## しくみ
 
 - **ホスト権威型**：部屋を作った人（ホスト）の端末がゲームの状態を持ち、他の人の操作を受け取って状態を更新し、全員に配信します。サーバー側のプログラムは不要です。
 - **ホスト交代**：ホストが閉じる・電波が切れると、約10秒後に参加順で次の人が自動でホストを引き継ぎます。状態は全員が持っているのでゲームはそのまま続きます。
-- **再接続**：リロードしても同じプレイヤーとして復帰します（タブごとにIDを保持）。
+- **再接続**：通信が一時的に切れると、画面上部に「再接続中…」の帯が出て、自動でつなぎ直します（ゲーム画面はそのまま）。切れている間の操作は、つながり直したあとに自動で送り直します。リロードしても同じプレイヤーとして復帰します（タブごとにIDを保持）。
+- **接続できないとき**：何度か自動で試してもつながらない場合は「接続できませんでした」と出ます。「再試行」でページを読み直さずにつなぎ直せます。部屋の情報が届かない場合は「部屋が見つかりません」と出て、「このコードで部屋を作る」から同じコードで部屋を作れます。
+- **満員**：1つの部屋は最大10人です。11人目には「この部屋は満員です」と表示されます。
+- **チャットの連投制限**：1人あたり3秒間に3件までです。超えると少しの間、送信ボタンが押せなくなります。
 - **注意**：通信内容は部屋の全員に届くため、開発者ツールを使えばワードウルフのお題などは覗けてしまいます。友達同士で遊ぶ前提の設計です。
 
 ## ゲームの追加方法

@@ -390,6 +390,12 @@ input:focus {
   align-items: center;
 }
 
+/* 見出しが 1 文字だけ次の行に落ちないよう、改行は空白と <wbr> の位置だけにする（収まらない場合だけどこでも折る） */
+.message h2 {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .divider {
   display: flex;
   align-items: center;
@@ -473,6 +479,65 @@ input:focus {
 }
 
 /* ---------- ルーム ---------- */
+/* トップバーと「再接続中…」帯をまとめて上部に固定する（帯がスクロールで流れて見落とされないように） */
+.room-top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.room-top .topbar {
+  position: static;
+}
+
+/* 帯の高さが変わってもゲーム画面がガタつかないよう、最小の高さを固定し 2 行までに収める */
+.conn-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 4px 16px;
+  background: #b7791f;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.conn-sub {
+  font-weight: 400;
+  margin-left: 0.5em;
+  opacity: 0.92;
+}
+
+.conn-spinner {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgb(255 255 255 / 0.4);
+  border-top-color: #fff;
+  animation: conn-spin 0.9s linear infinite;
+}
+
+@keyframes conn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conn-spinner {
+    animation: none;
+  }
+}
+
+.message-actions {
+  justify-content: center;
+}
+
 .room-meta {
   display: flex;
   align-items: center;
@@ -514,6 +579,10 @@ input:focus {
   .room-side {
     position: sticky;
     top: 76px;
+  }
+  /* 「再接続中…」帯が出ている間は、その高さの分だけチャット欄を下げて帯に隠れないようにする */
+  .room-top:has(.conn-banner) ~ .room-layout .room-side {
+    top: 106px;
   }
   .room-side .chat-list {
     height: calc(100dvh - 240px);
@@ -687,6 +756,12 @@ input:focus {
 .chat-form {
   display: flex;
   gap: 8px;
+}
+
+.chat-limit {
+  margin: 0;
+  font-size: 12px;
+  color: var(--bad);
 }
 
 .chat-toggle {

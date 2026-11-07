@@ -4,7 +4,7 @@ import { CATEGORIES, GAMES, gamesIn } from '../games/registry';
 import { CATEGORY_INFO, resolveOptions } from '../games/types';
 import { getPlayerId, getSavedName, NAME_MAX, saveName } from '../lib/identity';
 import { isOnlineMode } from '../lib/transport';
-import type { RoomState } from '../room/logic';
+import { chatBlockedUntil, MAX_ROOM_PLAYERS, type RoomState } from '../room/logic';
 import { useRoom, type RoomHandle } from '../room/useRoom';
 import Chat from './Chat';
 import { Brand, DemoBanner } from './Layout';
@@ -58,45 +58,132 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
   const room = useRoom(code, me, name, create);
   const { status, state } = room;
 
-  if (status === 'left') {
-    return (
-      <Message title="部屋を退出しました">
-        <button className="btn primary" onClick={goHome}>
-          トップへ
-        </button>
-      </Message>
-    );
-  }
-  if (status === 'notfound' || status === 'failed') {
-    return (
-      <Message title={status === 'failed' ? '接続できませんでした' : `部屋 ${code} が見つかりません`}>
-        <p className="muted">
-          {status === 'failed' ? '通信環境を確認してもう一度お試しください。' : 'コードが正しいか、ホストがまだ部屋にいるか確認してください。'}
-        </p>
-        <div className="row">
-          <button className="btn" onClick={() => location.reload()}>
-            再試行
-          </button>
-          {status === 'notfound' && (
+  // RoomStatus の全値をここで出し分ける。値が増えたら default の never で型エラーになり、分岐の漏れに気づける
+  switch (status) {
+    case 'ready':
+      // 契約上 ready なら state は非 null だが、念のため null なら接続中の表示に倒す
+      return state ? <RoomScreen room={room} state={state} /> : <Connecting code={code} />;
+    case 'connecting':
+      return <Connecting code={code} />;
+    case 'failed':
+      return (
+        <Message
+          title={
+            <>
+              接続<wbr />
+              できませんでした
+            </>
+          }
+        >
+          <p className="muted">通信環境を確認してもう一度お試しください。</p>
+          <div className="row message-actions">
+            <button className="btn primary" onClick={room.retry}>
+              再試行
+            </button>
+            <button className="btn" onClick={goHome}>
+              トップへ
+            </button>
+          </div>
+        </Message>
+      );
+    case 'notfound':
+      return (
+        <Message
+          title={
+            <>
+              部屋 <span className="mono">{code}</span> が<wbr />
+              見つかりません
+            </>
+          }
+        >
+          <p className="muted">コードが正しいか、ホストがまだ部屋にいるか確認してください。</p>
+          <div className="row message-actions">
+            <button className="btn" onClick={room.retry}>
+              再試行
+            </button>
             <button className="btn primary" onClick={() => goRoom(code, true)}>
               このコードで部屋を作る
             </button>
-          )}
-        </div>
-      </Message>
-    );
+          </div>
+        </Message>
+      );
+    case 'full':
+      return (
+        <Message
+          title={
+            <>
+              この部屋は満員です<wbr />
+              （最大{MAX_ROOM_PLAYERS}人）
+            </>
+          }
+        >
+          <p className="muted">空きが出るまで待つか、トップから別の部屋を作ってください。</p>
+          <div className="row message-actions">
+            <button className="btn primary" onClick={goHome}>
+              トップへ
+            </button>
+          </div>
+        </Message>
+      );
+    case 'kicked':
+      // 「もう一度参加する」（MVP-13, Should）は今回入れない。自分で退出したと誤解されないよう文言だけ分ける
+      return (
+        <Message
+          title={
+            <>
+              ホストにより<wbr />
+              部屋から外されました
+            </>
+          }
+        >
+          <p className="muted">続けて遊ぶには、トップから部屋に入り直してください。</p>
+          <div className="row message-actions">
+            <button className="btn primary" onClick={goHome}>
+              トップへ
+            </button>
+          </div>
+        </Message>
+      );
+    case 'left':
+      return (
+        <Message title="部屋を退出しました">
+          <div className="row message-actions">
+            <button className="btn primary" onClick={goHome}>
+              トップへ
+            </button>
+          </div>
+        </Message>
+      );
+    default: {
+      const unreachable: never = status;
+      return unreachable;
+    }
   }
-  if (!state) {
-    return (
-      <Message title="接続中…">
-        <p className="muted">部屋 {code} に入っています</p>
-      </Message>
-    );
-  }
-  return <RoomScreen room={room} state={state} />;
 }
 
-function Message({ title, children }: { title: string; children: ReactNode }) {
+function Connecting({ code }: { code: string }) {
+  return (
+    <Message title="接続中…">
+      <p className="muted">
+        部屋 <span className="mono">{code}</span> に入っています
+      </p>
+    </Message>
+  );
+}
+
+// 一度つながった後に通信が切れている間、画面上部に出す細い帯。ゲーム画面は消さずに上へ重ねる
+function ReconnectBanner() {
+  return (
+    <div className="conn-banner" role="status" aria-live="polite">
+      <span className="conn-spinner" aria-hidden />
+      <span>
+        再接続中…<span className="conn-sub">自動でつなぎ直しています</span>
+      </span>
+    </div>
+  );
+}
+
+function Message({ title, children }: { title: ReactNode; children?: ReactNode }) {
   return (
     <div className="page">
       <header className="topbar">
@@ -164,25 +251,37 @@ function RoomScreen({ room, state }: { room: RoomHandle; state: RoomState }) {
   }, [chatVisible, state.chat.length]);
   const unread = state.chat.slice(seenChat).filter((m) => m.by !== null && m.by !== me).length;
 
-  const chat = <Chat messages={state.chat} me={me} onSend={(text) => dispatch({ type: 'chat', text })} />;
+  // 連投制限はホストの reduceRoom が最終判断する。ここでは同じ規則でボタンを先に止め、送っても消える操作をさせない（AC-20）
+  const chat = (
+    <Chat
+      messages={state.chat}
+      me={me}
+      onSend={(text) => dispatch({ type: 'chat', text })}
+      blockedUntil={chatBlockedUntil(state, me, room.now())}
+      now={room.now}
+    />
+  );
 
   return (
     <div className="page room">
-      <header className="topbar">
-        <Brand />
-        <div className="room-meta">
-          <span className="room-code" title="ルームコード">
-            <span className="muted room-label">ROOM</span> <span className="mono">{state.code}</span>
-          </span>
-          <ShareButton code={state.code} />
-          {!wide && (
-            <button className="btn small chat-toggle" onClick={() => setChatOpen(true)} aria-label="チャットを開く">
-              💬{unread > 0 && <span className="badge">{unread}</span>}
-            </button>
-          )}
-          <ConfirmButton className="btn small ghost" label="退出" confirmLabel="本当に退出" onConfirm={room.leave} />
-        </div>
-      </header>
+      <div className="room-top">
+        <header className="topbar">
+          <Brand />
+          <div className="room-meta">
+            <span className="room-code" title="ルームコード">
+              <span className="muted room-label">ROOM</span> <span className="mono">{state.code}</span>
+            </span>
+            <ShareButton code={state.code} />
+            {!wide && (
+              <button className="btn small chat-toggle" onClick={() => setChatOpen(true)} aria-label="チャットを開く">
+                💬{unread > 0 && <span className="badge">{unread}</span>}
+              </button>
+            )}
+            <ConfirmButton className="btn small ghost" label="退出" confirmLabel="本当に退出" onConfirm={room.leave} />
+          </div>
+        </header>
+        {room.connection !== 'connected' && <ReconnectBanner />}
+      </div>
       {!isOnlineMode && <DemoBanner />}
 
       <div className="room-layout">
