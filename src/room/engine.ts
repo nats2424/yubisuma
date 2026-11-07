@@ -476,11 +476,13 @@ export class RoomEngine {
     const cur = this.state;
     const { me } = this.d;
     if (!cur || !connected || !cur.players.some((p) => p.id === me)) return;
-    // 接続直後・復帰直後は lastSeen が当てにならないので判定しない
-    if (now - Math.max(this.connectedAt, this.resumedAt) < this.t.OFFLINE_AFTER_MS) return;
     const host = cur.hostId;
-    const seen = this.lastSeen.get(host);
+    // ホストが明示的に去った（bye・ホストからの sync）ことは、受け取った時点で確かな事実
     const hostGone = this.departed.has(host);
+    // 接続直後・復帰直後は lastSeen が当てにならないので、「しばらく聞こえない」での判定はしない。
+    // ただし明示的な離脱は古い lastSeen の誤判定ではないので猶予を飛ばす（QA-BUG-01：猶予が bye にも効き、交代に約 8 秒かかっていた）
+    if (!hostGone && now - Math.max(this.connectedAt, this.resumedAt) < this.t.OFFLINE_AFTER_MS) return;
+    const seen = this.lastSeen.get(host);
     const lost = hostGone || seen === undefined || now - seen >= this.t.OFFLINE_AFTER_MS;
     if (!lost || pickNextHost(cur, this.online, host) !== me) return;
     const othersOnline = cur.players.some((p) => p.id !== me && p.id !== host && this.online.has(p.id));
