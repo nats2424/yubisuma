@@ -1,9 +1,28 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import type { ChatMessage } from '../room/logic';
+import { useEffect, useReducer, useRef, useState, type FormEvent } from 'react';
+import { CHAT_MAX_LEN, type ChatMessage } from '../room/logic';
 
-export default function Chat({ messages, me, onSend }: { messages: ChatMessage[]; me: string; onSend: (text: string) => void }) {
+type Props = {
+  messages: ChatMessage[];
+  me: string;
+  onSend: (text: string) => void;
+  // この時刻（ルーム共通時計）まで送信できない。0 なら制限なし（chatBlockedUntil の戻り値）
+  blockedUntil: number;
+  now: () => number;
+};
+
+export default function Chat({ messages, me, onSend, blockedUntil, now }: Props) {
   const [text, setText] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
+  // 制限の解除はメッセージの到着と関係なく時間だけで起きるので、解除時刻に自分で再描画する
+  const [, rerender] = useReducer((n: number) => n + 1, 0);
+  const blocked = blockedUntil > 0 && now() < blockedUntil;
+
+  useEffect(() => {
+    const wait = blockedUntil - now();
+    if (blockedUntil <= 0 || wait <= 0) return;
+    const t = setTimeout(rerender, wait + 50);
+    return () => clearTimeout(t);
+  }, [blockedUntil, now]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -12,7 +31,8 @@ export default function Chat({ messages, me, onSend }: { messages: ChatMessage[]
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!text.trim()) return;
+    // 送信中に制限がかかった場合は入力を消さずに残し、解除後にそのまま送れるようにする
+    if (!text.trim() || blocked) return;
     onSend(text);
     setText('');
   };
@@ -34,9 +54,21 @@ export default function Chat({ messages, me, onSend }: { messages: ChatMessage[]
           ),
         )}
       </div>
+      {blocked && (
+        <p className="chat-limit" role="status">
+          連続で送信したため、少し待ってから送ってください
+        </p>
+      )}
       <form className="chat-form" onSubmit={submit}>
-        <input value={text} onChange={(e) => setText(e.target.value)} maxLength={200} placeholder="メッセージ" enterKeyHint="send" />
-        <button className="btn primary" type="submit" disabled={!text.trim()}>
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          maxLength={CHAT_MAX_LEN}
+          placeholder="メッセージ"
+          enterKeyHint="send"
+          aria-label="チャットのメッセージ"
+        />
+        <button className="btn primary" type="submit" disabled={!text.trim() || blocked}>
           送信
         </button>
       </form>

@@ -748,6 +748,12 @@ input:focus {
   gap: 8px;
 }
 
+.chat-limit {
+  margin: 0;
+  font-size: 12px;
+  color: var(--bad);
+}
+
 .chat-toggle {
   position: relative;
   padding: 0 10px;

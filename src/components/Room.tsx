@@ -4,7 +4,7 @@ import { CATEGORIES, GAMES, gamesIn } from '../games/registry';
 import { CATEGORY_INFO, resolveOptions } from '../games/types';
 import { getPlayerId, getSavedName, NAME_MAX, saveName } from '../lib/identity';
 import { isOnlineMode } from '../lib/transport';
-import { MAX_ROOM_PLAYERS, type RoomState } from '../room/logic';
+import { chatBlockedUntil, MAX_ROOM_PLAYERS, type RoomState } from '../room/logic';
 import { useRoom, type RoomHandle } from '../room/useRoom';
 import Chat from './Chat';
 import { Brand, DemoBanner } from './Layout';
@@ -222,7 +222,16 @@ function RoomScreen({ room, state }: { room: RoomHandle; state: RoomState }) {
   }, [chatVisible, state.chat.length]);
   const unread = state.chat.slice(seenChat).filter((m) => m.by !== null && m.by !== me).length;
 
-  const chat = <Chat messages={state.chat} me={me} onSend={(text) => dispatch({ type: 'chat', text })} />;
+  // 連投制限はホストの reduceRoom が最終判断する。ここでは同じ規則でボタンを先に止め、送っても消える操作をさせない（AC-20）
+  const chat = (
+    <Chat
+      messages={state.chat}
+      me={me}
+      onSend={(text) => dispatch({ type: 'chat', text })}
+      blockedUntil={chatBlockedUntil(state, me, room.now())}
+      now={room.now}
+    />
+  );
 
   return (
     <div className="page room">
