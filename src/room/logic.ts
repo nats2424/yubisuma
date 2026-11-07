@@ -6,6 +6,8 @@ const CHAT_KEEP = 60;
 export const CHAT_MAX_LEN = 200;
 // チャットの連投制限：1 人あたり windowMs の間に count 件まで（AC-20）
 export const CHAT_RATE = { count: 3, windowMs: 3000 } as const;
+// ゲーム開始からこの時間内の startGame は無視する（「もう一度」の二重押しで二重に始まらないように。AC-21）
+export const START_GUARD_MS = 1500;
 
 export type RoomPlayer = { id: string; name: string };
 
@@ -29,6 +31,9 @@ export type RoomState = {
   gameOptions: Record<string, GameOptions>;
   game: { id: string; players: GamePlayer[]; state: unknown; startedAt: number } | null;
   chat: ChatMessage[];
+  // 参加者ごとの処理済み最大 seq（設計 §2.3）。状態の一部なのでホスト交代でも引き継がれる。
+  // ACK 専用のメッセージは作らず、参加者はこの値を見て再送をやめる
+  acks: Record<string, number>;
 };
 
 export type RoomAction =
@@ -55,6 +60,7 @@ export const createRoom = (code: string, host: RoomPlayer, defaultGame: string):
   gameOptions: {},
   game: null,
   chat: [],
+  acks: {},
 });
 
 // a の方が新しい（採用すべき）状態なら正
@@ -137,11 +143,15 @@ export const reduceRoom = (
       const players = state.players.filter((p) => p.id !== target);
       const hostId = target === state.hostId ? (players[0]?.id ?? state.hostId) : state.hostId;
       const verb = action.type === 'leave' ? '退室しました' : '退室させられました';
-      return withChat({ ...state, players, hostId }, systemMessage(`${leaving.name}さんが${verb}`, now));
+      // 抜けた人の処理済み seq は捨てる（acks はメンバーの分だけ持つ）
+      const acks = Object.fromEntries(Object.entries(state.acks ?? {}).filter(([id]) => id !== target));
+      return withChat({ ...state, players, hostId, acks }, systemMessage(`${leaving.name}さんが${verb}`, now));
     }
     case 'chat': {
       const text = action.text.trim().slice(0, CHAT_MAX_LEN);
       if (!player || !text) return state;
+      // 連投はホストで捨てる。Client のボタン無効化と同じ式で判定する（AC-20）
+      if (chatBlockedUntil(state, by, now) > now) return state;
       return withChat(state, { id: `${by}_${now}_${msgSeq++}`, by, name: player.name, text, at: now });
     }
     case 'selectGame': {
@@ -158,11 +168,19 @@ export const reduceRoom = (
     case 'startGame': {
       const def = games[state.selectedGame];
       if (!isHost || !def) return state;
+      if (state.game && now - state.game.startedAt < START_GUARD_MS) return state;
       const online = new Set(action.online);
       const gamePlayers = state.players.filter((p) => online.has(p.id) || p.id === by);
       if (gamePlayers.length < def.minPlayers || gamePlayers.length > def.maxPlayers) return state;
+      let gameState: unknown;
+      try {
+        gameState = def.init(gamePlayers, now, resolveOptions(def, state.gameOptions?.[def.id]));
+      } catch {
+        // ゲーム側の不具合でルーム全体を止めない
+        return state;
+      }
       return withChat(
-        { ...state, game: { id: def.id, players: gamePlayers, state: def.init(gamePlayers, now, resolveOptions(def, state.gameOptions?.[def.id])), startedAt: now } },
+        { ...state, game: { id: def.id, players: gamePlayers, state: gameState, startedAt: now } },
         systemMessage(`「${def.name}」を開始しました`, now),
       );
     }
@@ -183,9 +201,40 @@ export const reduceRoom = (
         if (!state.game.players.some((p) => p.id === by)) return state;
         actor = by;
       }
-      const next = def.reduce(state.game.state, action.action, actor, now);
-      if (next === state.game.state) return state;
+      let next: unknown;
+      try {
+        next = def.reduce(state.game.state, action.action, actor, now);
+      } catch {
+        // 想定外の形のアクションでゲームの reduce が例外を投げても、状態を変えずに続ける（AC-04）
+        return state;
+      }
+      if (next === state.game.state || next === undefined) return state;
       return { ...state, game: { ...state.game, state: next } };
     }
   }
+};
+
+// 自分のものとして持っているキーだけを見る（"__proto__" などの ID でプロトタイプの値を拾わないように）
+export const ackOf = (state: RoomState, id: string): number =>
+  state.acks && Object.prototype.hasOwnProperty.call(state.acks, id) ? state.acks[id] : 0;
+
+// seq 付きアクションの受付（設計 §2.3）。重複・古い seq・非メンバー・ネットワークから来てはいけない種類なら null（状態を変えない）。
+// 受け付けた場合は reduce の結果が変わらなくても acks を進めた新しい状態を返す（参加者が再送をやめられるように）
+export const acceptAction = (
+  state: RoomState,
+  by: string,
+  seq: number,
+  action: RoomAction,
+  now: number,
+  games: GameRegistry,
+): RoomState | null => {
+  if (!Number.isSafeInteger(seq) || seq <= 0) return null;
+  // gameSystem はホスト自身のタイマー専用
+  if (action.type === 'gameSystem') return null;
+  if (!state.players.some((p) => p.id === by)) return null;
+  if (seq <= ackOf(state, by)) return null;
+  const next = reduceRoom(state, action, by, now, games);
+  // 退出した人の acks は作らない（leave の重複送信は非メンバーとして捨てられる）
+  if (!next.players.some((p) => p.id === by)) return next;
+  return { ...next, acks: { ...next.acks, [by]: seq } };
 };
