@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Brand } from './Layout';
 
 // 描画中の例外で React がツリーごと外し、画面が真っ白になるのを防ぐ（SEC-04 / MVP-15）。
 // game.state は検証しない設計（R-02 / R-03）なので、想定外の形の状態で View が投げることはありうる
@@ -30,8 +31,14 @@ export const reloadPage = () => location.reload();
 export function CrashScreen() {
   return (
     <div className="page">
+      <header className="topbar">
+        <Brand />
+      </header>
       <main className="center">
         <div className="panel entry message">
+          <span className="message-mark" aria-hidden>
+            !
+          </span>
           <h2>
             画面を表示<wbr />
             できませんでした

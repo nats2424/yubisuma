@@ -1,6 +1,7 @@
 import { Panel, nameOf } from '../../components/ui';
 import Hearts from '../micro/Hearts';
 import MicroStage from '../micro/MicroStage';
+import StageTrack from '../micro/StageTrack';
 import { speedForStage } from '../micro/core';
 import type { GameViewProps } from '../types';
 import { alive, ranking, type RushAction, type RushState } from './logic';
@@ -33,7 +34,10 @@ export default function RushView({ state: s, me, players, send, now }: GameViewP
   return (
     <div className="stack">
       <div className="rush-header">
-        <span className="stage-no">STAGE {s.stage}</span>
+        <span className="stage-wrap">
+          <span className="stage-no">STAGE {s.stage}</span>
+          <StageTrack stage={s.stage} />
+        </span>
         {s.order.includes(me) && <Hearts lives={s.lives[me] ?? 0} max={startLives} />}
       </div>
 
@@ -45,6 +49,7 @@ export default function RushView({ state: s, me, players, send, now }: GameViewP
           existing={s.round.results[me]}
           label={speedUp ? 'SPEED UP!' : `STAGE ${s.stage}`}
           waitingMessage={alive(s).length > 1 ? 'みんなを待っています' : ''}
+          missNote="ライフが1つ減った"
           onSubmit={(result) => send({ type: 'submit', result })}
         />
       ) : (
@@ -56,7 +61,7 @@ export default function RushView({ state: s, me, players, send, now }: GameViewP
         </div>
       )}
 
-      <Panel title="プレイヤー">
+      <Panel title={`残り ${alive(s).length}人`}>
         <ul className="tally">
           {rank.map((id) => (
             <li key={id} className={s.lives[id] > 0 ? '' : 'out'}>
