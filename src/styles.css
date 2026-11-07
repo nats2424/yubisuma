@@ -651,6 +651,10 @@ input:focus {
   background: var(--surface-2);
   cursor: pointer;
   text-align: center;
+  /* グリッドの列幅（minmax(0, 1fr)）より広がらないようにする */
+  min-width: 0;
+  /* ゲーム名の文字サイズをカードの幅に合わせるための基準（.game-name の cqi） */
+  container-type: inline-size;
 }
 
 .game-option:disabled {
@@ -668,9 +672,21 @@ input:focus {
   line-height: 1.2;
 }
 
+/* ゲーム名は単語の途中（「ラッシ／ュ」など）で折らない。空白の位置でだけ改行し、
+   それでも収まらないほど狭い場合だけどこでも折ってはみ出しを防ぐ（QA-BUG-06） */
+.game-name,
+.game-header h1,
+.panel-head h2,
+.catalog-item h3 {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .game-name {
   font-weight: 700;
-  font-size: 14px;
+  /* 360px の 2 列ではカードの中身が約 125px しかなく、14px だと 9 文字の「ミニゲームラッシュ」が収まらない。
+     カード幅に合わせて少しだけ縮め、9 文字までは 1 行に収める */
+  font-size: clamp(11px, 10.5cqi, 14px);
 }
 
 .game-meta {

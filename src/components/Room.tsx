@@ -1,12 +1,13 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { goHome, goRoom } from '../App';
 import { CATEGORIES, GAMES, gamesIn } from '../games/registry';
-import { CATEGORY_INFO, resolveOptions } from '../games/types';
+import { CATEGORY_INFO, resolveOptions, type GameDef } from '../games/types';
 import { getPlayerId, getSavedName, NAME_MAX, saveName } from '../lib/identity';
 import { isOnlineMode } from '../lib/transport';
 import { chatBlockedUntil, MAX_ROOM_PLAYERS, type RoomState } from '../room/logic';
 import { useRoom, type RoomHandle } from '../room/useRoom';
 import Chat from './Chat';
+import ErrorBoundary, { CrashScreen, reloadPage } from './ErrorBoundary';
 import { Brand, DemoBanner } from './Layout';
 import { ConfirmButton, Panel } from './ui';
 
@@ -62,7 +63,14 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
   switch (status) {
     case 'ready':
       // 契約上 ready なら state は非 null だが、念のため null なら接続中の表示に倒す
-      return state ? <RoomScreen room={room} state={state} /> : <Connecting code={code} />;
+      // 部屋の画面のどこかで描画が例外を投げても、真っ白ではなく再読み込みを促す表示にする（SEC-04）
+      return state ? (
+        <ErrorBoundary fallback={() => <CrashScreen />}>
+          <RoomScreen room={room} state={state} />
+        </ErrorBoundary>
+      ) : (
+        <Connecting code={code} />
+      );
     case 'connecting':
       return <Connecting code={code} />;
     case 'failed':
@@ -360,13 +368,56 @@ function Members({
   );
 }
 
+// 受信した状態のゲーム ID は他端末の自己申告なので、登録表の自前のキーだけを引く。
+// GAMES['constructor'] や GAMES['__proto__'] のような Object.prototype 由来の値を拾わないため（SEC-04）
+function findGame(id: unknown): GameDef | undefined {
+  return typeof id === 'string' && Object.hasOwn(GAMES, id) ? GAMES[id] : undefined;
+}
+
+// 登録にないゲーム。悪意のほか、デプロイ直後の版ずれ（新しい版のタブが新ゲームを選んだ）でも起こる
+function UnknownGame({ onLobby }: { onLobby?: () => void }) {
+  return (
+    <Panel title="未対応のゲームです">
+      <p className="lead-sm">このゲームは新しいバージョンで追加されました。ページを再読み込みしてください。</p>
+      <div className="row">
+        <button className="btn primary" onClick={reloadPage}>
+          再読み込み
+        </button>
+        {onLobby && (
+          <button className="btn" onClick={onLobby}>
+            ロビーへ
+          </button>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+// ゲームの View が例外を投げたときの表示。メンバー・チャットは残したまま、このゲーム枠だけを差し替える
+function GameCrashed({ onRetry, onLobby }: { onRetry: () => void; onLobby?: () => void }) {
+  return (
+    <Panel title="ゲーム画面を表示できませんでした">
+      <p className="lead-sm">ページを再読み込みしてください。</p>
+      <div className="row">
+        <button className="btn primary" onClick={reloadPage}>
+          再読み込み
+        </button>
+        <button className="btn" onClick={onRetry}>
+          もう一度表示
+        </button>
+        {onLobby && (
+          <button className="btn" onClick={onLobby}>
+            ロビーへ
+          </button>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
 function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
-  const { isHost, online, dispatch } = room;
-  const selected = GAMES[state.selectedGame];
-  const options = resolveOptions(selected, state.gameOptions?.[selected.id]);
-  const count = state.players.filter((p) => online.has(p.id)).length;
-  const tooFew = count < selected.minPlayers;
-  const tooMany = count > selected.maxPlayers;
+  const { isHost, dispatch } = room;
+  const selected = findGame(state.selectedGame);
 
   return (
     <div className="stack">
@@ -399,57 +450,72 @@ function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
         ))}
       </Panel>
 
-      <Panel title={`${selected.emoji} ${selected.name}`}>
-        <p className="lead-sm">{selected.tagline}</p>
-        <ol className="rules">
-          {selected.rules.map((r) => (
-            <li key={r}>{r}</li>
-          ))}
-        </ol>
-        {selected.options?.map((opt) => (
-          <div key={opt.key} className="option-row">
-            <span className="label">{opt.label}</span>
-            <div className="segmented">
-              {opt.choices.map((c) => (
-                <button
-                  key={c.value}
-                  className={options[opt.key] === c.value ? 'selected' : ''}
-                  disabled={!isHost}
-                  onClick={() => dispatch({ type: 'setOption', key: opt.key, value: c.value })}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-        {isHost ? (
-          <>
-            <button
-              className="btn primary block"
-              disabled={tooFew || tooMany}
-              onClick={() => dispatch({ type: 'startGame', online: [...online] })}
-            >
-              スタート（{count}人）
-            </button>
-            {tooFew && <p className="hint">あと{selected.minPlayers - count}人必要です。「招待する」からURLを送りましょう。</p>}
-            {tooMany && <p className="hint">このゲームは{selected.maxPlayers}人までです。</p>}
-          </>
-        ) : (
-          <p className="notice">ホストがゲームを開始するのを待っています…</p>
-        )}
-      </Panel>
+      {/* 選択中のゲームが登録にないときも、ゲームの選択欄は残す（ホストが手元にあるゲームを選び直せる） */}
+      {selected ? <SelectedGame room={room} state={state} selected={selected} /> : <UnknownGame />}
     </div>
+  );
+}
+
+function SelectedGame({ room, state, selected }: { room: RoomHandle; state: RoomState; selected: GameDef }) {
+  const { isHost, online, dispatch } = room;
+  const options = resolveOptions(selected, state.gameOptions?.[selected.id]);
+  const count = state.players.filter((p) => online.has(p.id)).length;
+  const tooFew = count < selected.minPlayers;
+  const tooMany = count > selected.maxPlayers;
+
+  return (
+    <Panel title={`${selected.emoji} ${selected.name}`}>
+      <p className="lead-sm">{selected.tagline}</p>
+      <ol className="rules">
+        {selected.rules.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ol>
+      {selected.options?.map((opt) => (
+        <div key={opt.key} className="option-row">
+          <span className="label">{opt.label}</span>
+          <div className="segmented">
+            {opt.choices.map((c) => (
+              <button
+                key={c.value}
+                className={options[opt.key] === c.value ? 'selected' : ''}
+                disabled={!isHost}
+                onClick={() => dispatch({ type: 'setOption', key: opt.key, value: c.value })}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+      {isHost ? (
+        <>
+          <button
+            className="btn primary block"
+            disabled={tooFew || tooMany}
+            onClick={() => dispatch({ type: 'startGame', online: [...online] })}
+          >
+            スタート（{count}人）
+          </button>
+          {tooFew && <p className="hint">あと{selected.minPlayers - count}人必要です。「招待する」からURLを送りましょう。</p>}
+          {tooMany && <p className="hint">このゲームは{selected.maxPlayers}人までです。</p>}
+        </>
+      ) : (
+        <p className="notice">ホストがゲームを開始するのを待っています…</p>
+      )}
+    </Panel>
   );
 }
 
 function GameArea({ room, state }: { room: RoomHandle; state: RoomState }) {
   const { me, isHost, online, dispatch, now } = room;
   const game = state.game!;
-  const def = GAMES[game.id];
+  const def = findGame(game.id);
   const [showRules, setShowRules] = useState(false);
+  // ホストだけはロビーへ戻して、手元にあるゲームを選び直せる
+  const toLobby = isHost ? () => dispatch({ type: 'endGame' }) : undefined;
 
-  if (!def) return <p className="notice">未対応のゲームです</p>;
+  if (!def) return <UnknownGame onLobby={toLobby} />;
   const View = def.View;
 
   return (
@@ -483,16 +549,18 @@ function GameArea({ room, state }: { room: RoomHandle; state: RoomState }) {
           </ol>
         </Panel>
       )}
-      <View
-        key={game.startedAt}
-        state={game.state}
-        me={me}
-        players={game.players}
-        online={online}
-        isHost={isHost}
-        now={now}
-        send={(action: unknown) => dispatch({ type: 'game', action })}
-      />
+      {/* 新しいゲームが始まったら（startedAt が変わったら）境界も作り直し、前回の失敗表示を持ち越さない */}
+      <ErrorBoundary key={game.startedAt} fallback={(reset) => <GameCrashed onRetry={reset} onLobby={toLobby} />}>
+        <View
+          state={game.state}
+          me={me}
+          players={game.players}
+          online={online}
+          isHost={isHost}
+          now={now}
+          send={(action: unknown) => dispatch({ type: 'game', action })}
+        />
+      </ErrorBoundary>
     </div>
   );
 }

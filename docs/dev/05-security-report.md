@@ -160,6 +160,7 @@
   - Backend：`onState`（とスナップショット復元）で `Object.hasOwn(games, selectedGame)` と、`game` があれば `Object.hasOwn(games, game.id)` を確かめ、満たさない状態は採用しない（`parseRoomState` に `games` を渡す形でもよい）。
   - Client：`GAMES[...]` の参照を `Object.hasOwn` 付きにし、見つからなければ「未対応のゲームです」を出す（`GameArea` の既存の表示を `Lobby` にも）。
 - テスト：`security-engine.test.ts` の `SEC-04: selectedGame / game.id が登録にない（constructor・__proto__ を含む）状態は採用しない`
+- Client 対応（済み）：`src/components/Room.tsx` のゲーム参照を `findGame`（`Object.hasOwn(GAMES, id)`）に統一。登録にない `selectedGame` はゲーム選択欄を残したまま、`game.id` はゲーム枠に「このゲームは新しいバージョンで追加されました。ページを再読み込みしてください」と「再読み込み」（ホストには「ロビーへ」も）を出す。あわせてエラー境界 `src/components/ErrorBoundary.tsx` を、ゲームの View（メンバー・チャットは残してゲーム枠だけ「ゲーム画面を表示できませんでした」）・部屋の画面全体・アプリ全体（`main.tsx`）の 3 か所に入れた（MVP-15 の View のエラー境界、R-02 / T-21 の画面破壊も緩和）。E2E（Playwright、360 / 1280px）で `selectedGame: 'constructor'`・`game.id: '__proto__'`・形の壊れた大富豪の `game.state` を BroadcastChannel から送り、いずれも真っ白にならず該当の表示になること、ページエラー 0 件を確認（Backend の採用前検査は未マージの状態で確認）
 
 ### SEC-05（低）深い入れ子の `game.state` を受けると、受信処理から例外が漏れる
 
