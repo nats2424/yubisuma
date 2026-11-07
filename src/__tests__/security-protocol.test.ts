@@ -183,7 +183,7 @@ describe('プロトタイプ汚染（S-02）', () => {
     expect(parseWireMessage(msg, CODE)).toEqual({ v: 2, t: 'hb', from: 'b' });
   });
 
-  it.skip('SEC-03: Object.prototype にある名前（__proto__ / constructor / toString など）はプレイヤー ID として受け付けない', () => {
+  it('SEC-03: Object.prototype にある名前（__proto__ / constructor / toString など）はプレイヤー ID として受け付けない', () => {
     for (const id of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf']) {
       expect(parseWireMessage({ v: 2, t: 'join', from: id, name: 'X' }, CODE)).toBeNull();
       const s = room();

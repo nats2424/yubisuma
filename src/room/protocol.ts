@@ -28,7 +28,12 @@ type Obj = Record<string, unknown>;
 
 const isObj = (x: unknown): x is Obj => typeof x === 'object' && x !== null && !Array.isArray(x);
 const isStr = (x: unknown, max = Infinity): x is string => typeof x === 'string' && x.length <= max;
-const isId = (x: unknown): x is string => typeof x === 'string' && x.length >= 1 && x.length <= MAX_ID_LEN;
+// プレイヤー ID（from・players[].id・hostId・kick.target・startGame.online）。正規の ID は 'p_' + 英数字。
+// 各ゲームは ID をオブジェクトのキーに使うので、Object.prototype にある名前（__proto__ / constructor / toString など）は
+// 拒否する（票の集計が消える・「提出済み」扱いになるなどを防ぐ。SEC-03）。文字種も英数字・_・- に絞る
+const ID_RE = /^[A-Za-z0-9_-]+$/;
+const isId = (x: unknown): x is string =>
+  typeof x === 'string' && x.length >= 1 && x.length <= MAX_ID_LEN && ID_RE.test(x) && !(x in Object.prototype);
 const isNum = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
 const isPosInt = (x: unknown): x is number => typeof x === 'number' && Number.isSafeInteger(x) && x > 0;
 const isNonNegInt = (x: unknown): x is number => typeof x === 'number' && Number.isSafeInteger(x) && x >= 0;
