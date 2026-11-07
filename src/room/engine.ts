@@ -100,6 +100,10 @@ export class RoomEngine {
   private readonly lastSeen = new Map<string, number>();
   // bye を送ってきた人、または状態を失った（sync を送ってきた）ホスト。ホスト喪失の即時判定に使う
   private readonly departed = new Set<string>();
+  // 最後に join を送ってきた（＝自分をメンバーと見なしていない）端末。state・action・hb を受けたら外す。
+  // join を送るのは状態待ちの端末か、受け取った状態に自分がいない端末で、どちらも checkTakeover でホストを引き継がない。
+  // そういう端末をホスト候補に数えると、他の全員が引き継ぎを任せたまま誰も引き継がず部屋が固まる（P2-10）
+  private readonly joining = new Set<string>();
   private online: Set<string>;
   private lastRecvAt: number | null = null;
   // 状態を持つ端末（state・action・hb を送る端末）の声を聞いたか。状態待ちの端末は sync・join・bye しか送らない。
@@ -320,7 +324,10 @@ export class RoomEngine {
     // 何を受けても生存通知を兼ねる
     this.lastSeen.set(msg.from, now);
     this.lastRecvAt = now;
-    if (msg.t === 'state' || msg.t === 'action' || msg.t === 'hb') this.heardStateful = true;
+    if (msg.t === 'state' || msg.t === 'action' || msg.t === 'hb') {
+      this.heardStateful = true;
+      this.joining.delete(msg.from);
+    }
     this.stallFired = false;
     switch (msg.t) {
       case 'state':
@@ -332,6 +339,7 @@ export class RoomEngine {
         this.onAction(msg.from, msg.seq, msg.action);
         break;
       case 'join':
+        this.joining.add(msg.from);
         this.onJoin(msg.from, msg.name);
         break;
       case 'sync':
@@ -342,6 +350,7 @@ export class RoomEngine {
       case 'bye':
         this.lastSeen.delete(msg.from);
         this.departed.add(msg.from);
+        this.joining.delete(msg.from);
         break;
     }
     this.refreshOnline();
@@ -481,7 +490,10 @@ export class RoomEngine {
         return;
       }
     }
-    if (now - this.joinWaitFrom >= this.t.JOIN_TIMEOUT_MS) this.notFound = true;
+    // 状態を持つ端末の声が聞こえていれば部屋はある。ホストが bye なしで消えた直後なら、引き継ぎ（喪失判定 OFFLINE_AFTER_MS）を
+    // 待ってから状態が届くので、その分だけ「見つかりません」を遅らせる（P2-10：交代の直前に一瞬 notfound が出ないように）
+    const timeout = this.t.JOIN_TIMEOUT_MS + (this.heardStateful ? this.t.OFFLINE_AFTER_MS : 0);
+    if (now - this.joinWaitFrom >= timeout) this.notFound = true;
   }
 
   // ホスト交代（設計 §5.3）
@@ -497,7 +509,9 @@ export class RoomEngine {
     if (!hostGone && now - Math.max(this.connectedAt, this.resumedAt) < this.t.OFFLINE_AFTER_MS) return;
     const seen = this.lastSeen.get(host);
     const lost = hostGone || seen === undefined || now - seen >= this.t.OFFLINE_AFTER_MS;
-    if (!lost || pickNextHost(cur, this.online, host) !== me) return;
+    // 引き継げない端末（join を送っている＝状態待ちなど）は、オンラインでも候補から外す（P2-10）
+    const candidates = new Set([...this.online].filter((id) => !this.joining.has(id)));
+    if (!lost || pickNextHost(cur, candidates, host) !== me) return;
     const othersOnline = cur.players.some((p) => p.id !== me && p.id !== host && this.online.has(p.id));
     const lone = this.lastRecvAt === null || now - this.lastRecvAt >= this.t.LONE_TAKEOVER_MS;
     // 自分しかいないときは長めに待つ（孤立した端末が新しい世代を作って部屋を巻き戻さないように。ADR-7）
@@ -725,6 +739,10 @@ export class RoomEngine {
     });
     if (cur) this.departed.forEach((id) => {
       if (!keep(id)) this.departed.delete(id);
+    });
+    // 引き継ぎの候補選びにしか使わないので、メンバー以外（状態がなければ全員）は消してよい。次の join でまた入る
+    this.joining.forEach((id) => {
+      if (!keep(id)) this.joining.delete(id);
     });
     this.rate.forEach((history, id) => {
       if (history.every((t) => t <= now - this.t.ACTION_RATE.windowMs)) this.rate.delete(id);

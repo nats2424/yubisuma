@@ -417,6 +417,7 @@ tick（状態がないとき）:
   connected から RESTORE_AFTER_MS 経過 かつ 状態を持つ端末（state・action・hb の送り手）から一度も受信していない
     かつ スナップショットに自分がいる → takeOverHost(snapshot) で自分がホストとして復元（AC-30）
   connected から JOIN_TIMEOUT_MS 経過 → status = notfound
+    （状態を持つ端末の声を聞いていれば JOIN_TIMEOUT_MS + OFFLINE_AFTER_MS。§13.1 P2-10）
 ```
 
 - 「誰からも受信していない」ことを復元の条件にするのは、生きている部屋に古いスナップショットの世代（epoch+1）を被せて巻き戻さないため。ホストが生きていれば sync に必ず状態で答える。
@@ -446,7 +447,7 @@ tick（自分がホストでない・メンバーである）:
   前提: connection === 'connected' かつ now - max(connectedAt, resumedAt) >= OFFLINE_AFTER_MS
   host = cur.hostId
   ホスト喪失 = (host が bye 済み) または (host から OFFLINE_AFTER_MS 受信なし)
-  ホスト喪失 かつ pickNextHost(cur, online, host) === me:
+  ホスト喪失 かつ pickNextHost(cur, online − 最後に join を送ってきた人, host) === me:   // §13.1 P2-10
     自分以外のオンラインメンバーがいる                         → 引き継ぐ
     いない: host が bye 済み、または全員から LONE_TAKEOVER_MS 受信なし → 引き継ぐ
 引き継ぐ:
@@ -846,4 +847,11 @@ export type RoomHandle = {
 | P2-8 | QA-BUG-02 | `engine.ts` `tickWaiting` / `resume` / `onSync` | §5.1 の復元条件を「状態を持つ端末（state・action・hb の送り手）から受信していない」に変更。状態待ちの端末は hb を送らない。状態を持つ参加者は sync を受けたら（直前 1 秒に何も送っていなければ）hb を返す | 2 人同時リロードで、互いの sync・join を聞いた両方が復元せず部屋が消えていた。両方が復元しても同じ世代の競合として収束する |
 | P2-9 | QA-BUG-04 | `engine.ts` `onState` | 自分のいない状態を受けて `kicked` にするのは、同じ世代・同じホストのときだけ。ホストか世代が変わっていれば join し直す | 旧ホストだけが受け付けた参加者が、交代後に「外されました」になっていた。交代と kick が重なった場合は入り直せてしまうが、kick はやり直せる |
 
-- 既知の残り（票外・既存の挙動）：ホストが bye なしで消え（freeze・電池切れ）、次のホスト候補がその直後にリロードすると、候補は状態待ち（sync・join を送り続ける）なのでオンラインに見え、他の参加者は候補に譲って引き継がず、候補は状態を持つ参加者の声が聞こえるので復元もしない。修正前（`heardOther`）も同じ。対策案：メンバーからの `join`（状態待ちの印）を受けたら、その人を次のホスト候補から外す。
+- ~~既知の残り（票外・既存の挙動）~~ → P2-10 で修正：ホストが bye なしで消え（freeze・電池切れ）、次のホスト候補がその直後にリロードすると、候補は状態待ち（sync・join を送り続ける）なのでオンラインに見え、他の参加者は候補に譲って引き継がず、候補は状態を持つ参加者の声が聞こえるので復元もしない。修正前（`heardOther`）も同じ。
+
+| # | 票 | 対象 | 内容 | 理由 |
+| --- | --- | --- | --- | --- |
+| P2-10 | 票外（上記） | `engine.ts` `handleRaw` / `checkTakeover` / `pruneTables` | 最後に `join` を送ってきた端末を `joining` に入れ（`state`・`action`・`hb`・`bye` を受けたら外す）、`checkTakeover` の `pickNextHost` に渡すオンライン集合から除く。`othersOnline`（ADR-7 の 30 秒待ちを飛ばす条件）には数えたまま。メンバー以外の行は tick ごとに消す | `join` を送るのは状態待ちの端末か、受けた状態に自分がいない端末で、どちらも自分では引き継がない（`checkTakeover` は自分がメンバーの状態を持つときだけ動く）。`sync` は状態を持つ参加者も接続・復帰時に送るので印にしない。他人の ID を騙った `join` でその人を候補から外せるが、hb 等の偽装と同程度で、次の候補が引き継ぐだけ |
+| P2-10 | 同上 | `engine.ts` `tickWaiting` | 状態を持つ端末の声を聞いている状態待ちの端末は、「見つかりません」までを `JOIN_TIMEOUT_MS + OFFLINE_AFTER_MS`（17 秒）に延ばす（聞いていなければ従来どおり 8 秒。AC-10 は不変） | 部屋は生きていて、bye なしのホスト喪失なら引き継ぎ（喪失判定 9 秒 + tick）の後に状態が届く。8 秒のままだと交代の直前に一瞬 notfound が出る。タイマー値（`ROOM_TIMINGS`）自体は変えていない |
+
+- テスト：`qa-exceptions.test.ts`「ホストが bye なしで消えた直後に次のホスト候補がリロードしても…」「…候補 2 人が続けてリロードしても…」（修正前は両方失敗）。

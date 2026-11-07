@@ -251,6 +251,55 @@ describe('QA: リロード', () => {
     expect(snap(room.peers.b).status).toBe('ready');
     expect(counter(room.peers.b).count.a).toBe(1);
   });
+
+  // §13.1 末尾の既知の残り（P2-10）。候補 b は状態待ちで sync・join を送り続けるのでオンラインに見え、
+  // 修正前は c が b に引き継ぎを任せ、b は c の hb が聞こえるので復元もせず、b が「見つかりません」になっていた
+  it('ホストが bye なしで消えた直後に次のホスト候補がリロードしても、残りのメンバーが引き継いで部屋が続く', () => {
+    const room = readyRoom(['a', 'b', 'c']);
+    start(room, 'a', 'counter');
+    room.peers.b.engine.dispatch(inc);
+    room.peers.c.engine.dispatch(inc);
+    expect(room.sim.clock.runUntil(() => counter(room.peers.c).count.b === 1 && counter(room.peers.c).count.c === 1, 3000)).toBe(true);
+    room.settle(500);
+    // a は freeze（電池切れ・フリーズ）で bye を送らない。その直後に候補 b がリロードする
+    room.peers.a.node.freeze();
+    room.settle(200);
+    room.peers.b.reload();
+    const t0 = room.sim.clock.now();
+    const seen = new Set<string>();
+    room.sim.clock.runUntil(() => {
+      seen.add(snap(room.peers.b).status);
+      return hostIs(room, 'c', ['b', 'c'])() && room.converged(['b', 'c']) && stateOf(room.peers.b).players.some((p) => p.id === 'b');
+    }, 30000);
+    expect(seen.has('notfound')).toBe(false);
+    expect(room.hostIds().slice(1)).toEqual(['c', 'c']);
+    expect(room.converged(['b', 'c'])).toBe(true);
+    // ホスト喪失の判定（9 秒）+ tick 程度で引き継ぐ（AC-24 の 12 秒以内）
+    expect(room.sim.clock.now() - t0).toBeLessThanOrEqual(12000);
+    // ゲームは初期化されず、リロード前の操作も残る
+    expect(counter(room.peers.b).count).toEqual({ b: 1, c: 1 });
+    expect(snap(room.peers.b).status).toBe('ready');
+  });
+
+  it('ホストが bye なしで消えた直後に候補 2 人が続けてリロードしても、その次のメンバーが引き継ぐ', () => {
+    const room = readyRoom(['a', 'b', 'c', 'd']);
+    start(room, 'a', 'counter');
+    room.peers.a.node.freeze();
+    room.settle(200);
+    room.peers.b.reload();
+    room.settle(300);
+    room.peers.c.reload();
+    const t0 = room.sim.clock.now();
+    const seen = new Set<string>();
+    room.sim.clock.runUntil(() => {
+      seen.add(snap(room.peers.b).status).add(snap(room.peers.c).status);
+      return hostIs(room, 'd', ['b', 'c', 'd'])() && room.converged(['b', 'c', 'd']);
+    }, 30000);
+    expect(seen.has('notfound')).toBe(false);
+    expect(room.hostIds().slice(1)).toEqual(['d', 'd', 'd']);
+    expect(room.sim.clock.now() - t0).toBeLessThanOrEqual(12000);
+    expect(stateOf(room.peers.d).players.map((p) => p.id)).toEqual(['a', 'b', 'c', 'd']);
+  });
 });
 
 // ---------------------------------------------------------------------------
