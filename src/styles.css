@@ -129,8 +129,16 @@ input {
   outline-offset: 2px;
 }
 
-/* ルームコードなどの英数字は極太の描き文字で見せる（等幅の代わり。字間を広げて読み違いを防ぐ） */
+/* 数字（枚数・pt・ms）は本文の書体のまま太字・等幅数字にする。
+   極太の描き文字だと「0pt」の 0 が英字の O に見えるため、描き文字はルームコードだけに使う */
 .mono {
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.room-code .mono,
+.message .mono {
   font-family: var(--font-pop);
   font-weight: 400;
   letter-spacing: 0.08em;
@@ -1994,7 +2002,8 @@ button.card {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 2px solid var(--line);
+  /* ダークでは墨線（黒）が背景に沈むので文字色で縁取る（ライトでは同じ墨色） */
+  border: 2px solid var(--text);
   background: var(--surface);
 }
 
@@ -2144,7 +2153,8 @@ button.card {
 }
 
 .micro-title {
-  font-size: clamp(44px, 14vw, 72px);
+  /* 7 文字（「ふくらませろ！」）が 360px で 1 行に収まる大きさ */
+  font-size: clamp(32px, 10vw, 72px);
   transform: rotate(-4deg);
   animation: slam-in 0.25s cubic-bezier(0.2, 1.6, 0.4, 1);
 }
@@ -2192,7 +2202,7 @@ button.card {
 
 .micro-title-sm {
   margin: 2px 0 0 4px;
-  font-size: clamp(34px, 11vw, 46px);
+  font-size: clamp(28px, 9vw, 46px);
   transform: rotate(-3deg);
   transform-origin: left center;
   -webkit-text-stroke: 6px var(--ink);
@@ -2545,6 +2555,25 @@ button.card {
   from {
     transform: scale(1.6) rotate(-14deg);
     opacity: 0;
+  }
+}
+
+/* 狭い画面ではヘッダーのハートを少し小さくし、ライフ 4 つまでは STAGE の横に並べる */
+@media (max-width: 420px) {
+  .rush-header .hearts svg {
+    width: 26px;
+    height: 24px;
+  }
+}
+
+/* PC ではミニゲームの舞台が横に間延びしないよう、幅を抑えて中央に置く */
+@media (min-width: 760px) {
+  .rush-header,
+  .micro-intro,
+  .micro-play {
+    width: 100%;
+    max-width: 640px;
+    margin-inline: auto;
   }
 }
 
