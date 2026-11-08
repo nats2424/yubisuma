@@ -248,7 +248,23 @@ function ShareButton({ code }: { code: string }) {
   return (
     <>
       <button className="btn small" onClick={share}>
-        {copied ? 'コピーしました' : '招待する'}
+        {/* 狭い画面（QA-BUG-08）では文言を詰める／2 行にして、ヘッダーの 1 行に収める。
+            1 つの span に包むのは、.btn が flex なので子要素の間に gap が入ってしまうため */}
+        <span className="btn-label">
+          {copied ? (
+            <>
+              コピー<span className="only-wide">しました</span>
+              <span className="only-narrow">
+                <br />
+                済み
+              </span>
+            </>
+          ) : (
+            <>
+              招待<span className="only-wide">する</span>
+            </>
+          )}
+        </span>
       </button>
       {shown && (
         <div className="share-popover" role="dialog" aria-label="招待URL">
@@ -300,7 +316,20 @@ function RoomScreen({ room, state }: { room: RoomHandle; state: RoomState }) {
                 {unread > 0 && <span className="badge">{unread}</span>}
               </button>
             )}
-            <ConfirmButton className="btn small ghost" label="退出" confirmLabel="本当に退出" onConfirm={room.leave} />
+            <ConfirmButton
+              className="btn small ghost exit-btn"
+              label="退出"
+              confirmLabel={
+                <span className="btn-label">
+                  本当に
+                  <span className="only-narrow">
+                    <br />
+                  </span>
+                  退出
+                </span>
+              }
+              onConfirm={room.leave}
+            />
           </div>
         </header>
         {room.connection !== 'connected' && <ReconnectBanner />}
