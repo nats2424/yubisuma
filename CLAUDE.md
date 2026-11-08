@@ -36,3 +36,33 @@
 - **テスト**：ロジックを変えたら `src/__tests__/` に単体テストを追加する。
 - **コメント**：日本語で、「なぜそうするか」を書く。
 - **秘密情報**：`.env.local` はコミットしない。クライアントに含めてよいのは Supabase の anon キーだけ。
+
+## エージェント運用（オーケストレーター向け）
+
+役割ごとのサブエージェントを `.claude/agents/<役割>.md` に定義している。役割の中身（責務・判断基準）は `.claude/agent-roles/<役割>.md`。
+
+### 担当範囲と道具
+
+| 役割 | 編集してよいファイル | 道具 | 作業場所 |
+| --- | --- | --- | --- |
+| backend | `src/lib/**`、`src/room/**`、`src/games/**/*.ts`、`src/__tests__/**`、`docs/dev/02` §13、04/05/09 の担当票 | 読み・書き・Bash | worktree |
+| client | `src/components/**`、`src/App.tsx`、`src/main.tsx`、`src/styles.css`、`src/games/**/*.tsx`、`index.html`、`public/**`、`README.md`、`design/implemented/**`、04/05/09 の担当票 | 読み・書き・Bash | worktree |
+| qa | `src/__tests__/qa-*.test.ts`、`docs/dev/04-qa-report.md` | 読み・書き・Bash | worktree |
+| security | `src/__tests__/security-*.test.ts`、`docs/dev/05-security-report.md` | 読み・書き・Bash | worktree |
+| designer | `design/**`（`design/implemented/` を除く） | 読み・書き・Bash | worktree |
+| pdm | `docs/dev/01`・`06`・`07`・`08` | 読み・書き（Bash なし） | ルート |
+| cto | `docs/dev/02-architecture.md`（`src/room/types.ts` の変更承認） | 読み・書き（Bash なし） | ルート |
+| pjm | `docs/dev/03-wbs.md` | 読み・書き（Bash なし） | ルート |
+| marketing | `docs/dev/10-marketing-monetization.md` | 読み・書き（Bash なし） | ルート |
+| reviewer | なし（結果は報告で返し、オーケストレーターが `docs/dev/09-review.md` に保存） | 読み・Bash（編集なし） | ルート |
+| オーケストレーター | `CLAUDE.md`、`.claude/**`、`docs/DECISIONS.md`、`vite.config.ts`、`package.json`、`.gitignore` | すべて | ルート |
+
+### 手順
+
+1. **コードを書く役割（backend・client・qa・security・designer）は、1 人で動かすときも必ず `isolation: worktree` で起動する。** メインの作業フォルダで直接編集させない。
+2. 資料だけを書く役割（pdm・cto・pjm・marketing）と reviewer はルートで動かしてよい。
+3. マージの前に担当範囲を確認する：`python3 .claude/scripts/check-scope.py <役割> <base>..<worktree のブランチ>`。範囲外の変更があれば、理由を確かめてから取り込むか差し戻す。
+4. マージ後に `npm run typecheck`・`npm test`・`npm run build` を通してから push し、worktree とブランチを消す。
+5. 道具の制限は「どの道具を使えるか」までで、Write/Edit がどのファイルを書けるかまでは縛れない。範囲の確認は手順 3 で行う。
+6. 使用量の上限に当たらないよう、同時に動かすサブエージェントは 2 つまでにする。
+7. プロダクトオーナーの判断が必要な事項は `docs/DECISIONS.md` に追記し、通知する。
