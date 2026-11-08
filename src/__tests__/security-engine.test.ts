@@ -185,8 +185,8 @@ describe('SEC-05 / SEC-06: 異常な量・形のデータ', () => {
   });
 
   it('SEC-06: 毎回違う送信元 ID の hb を大量に送られても、生存確認の表が際限なく増えない', () => {
-    // 現状：lastSeen（と rate・syncReplyAt）はメンバー以外の ID も消さずに持ち続け、
-    // 受信のたびに refreshOnline が全件をなめる。長時間の flood でホスト端末が重くなる。
+    // lastSeen（と rate・syncReplyAt）のメンバー以外の ID の行は tick ごとに消える（SEC-06 の修正）ことを確かめる。
+    // 消えないと受信のたびに refreshOnline が全件をなめ、長時間の flood でホスト端末が重くなる。
     // engine の内部の表を直接見る（観測できる公開 API がないため。実装の名前が変わったらここも直す）
     const { room, send, peers } = attackedRoom();
     for (let i = 0; i < 3000; i++) {
