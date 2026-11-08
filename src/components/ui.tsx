@@ -51,8 +51,8 @@ export function ConfirmButton({
   onConfirm,
 }: {
   className: string;
-  label: string;
-  confirmLabel: string;
+  label: ReactNode;
+  confirmLabel: ReactNode;
   onConfirm: () => void;
 }) {
   const [armed, setArmed] = useState(false);

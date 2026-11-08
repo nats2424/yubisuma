@@ -1322,11 +1322,59 @@ input:focus {
   padding: 0;
 }
 
-/* 狭い画面では、ルームコードと「ROOM」の文字を隠してロゴと操作ボタンを 1 行に収める（コードは「招待する」で渡せる） */
-@media (max-width: 420px) {
+/* 狭い画面では、ルームコードと「ROOM」の文字を隠してロゴと操作ボタンを 1 行に収める（コードは「招待する」で渡せる）。
+   コードを出すと「本当に退出」「コピーしました」のときに約 523px 要るので、それより狭い幅では隠す */
+@media (max-width: 539px) {
   .room-label,
   .room .room-code {
     display: none;
+  }
+}
+
+/* 狭い画面だけで出し分ける文言の断片（ボタンの文言を短くする・2 行にするのに使う） */
+.only-narrow {
+  display: none;
+}
+
+/* 320px 端末でもロゴ・招待・チャット・退出を 1 行に収める（QA-BUG-08）。
+   320px で使える幅は 288px しかなく、「本当に退出」「コピーしました」に変わると 400px 近くまで
+   はみ出していたので、ロゴやボタンの形（案B）は変えずに文言と隙間だけを詰める */
+@media (max-width: 420px) {
+  .only-wide {
+    display: none;
+  }
+
+  .only-narrow {
+    display: inline;
+  }
+
+  .room .topbar {
+    gap: 4px;
+  }
+
+  .room-meta {
+    gap: 4px;
+  }
+
+  /* 足りないときにボタンが黙って縮み、文字が枠にかかるのを防ぐ */
+  .room-meta > .btn {
+    flex: none;
+  }
+
+  .room-meta > .btn.small:not(.ghost):not(.chat-toggle) {
+    padding: 0 10px;
+  }
+
+  /* 2 行になる文言（「本当に／退出」「コピー／済み」）が高さ 44px の中に収まる行間にする */
+  .room-meta .btn-label {
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  /* 枠のない「退出」は左右の余白を詰めても、幅 44px 以上のタップ領域は残す */
+  .room-meta .exit-btn {
+    min-width: 44px;
+    padding: 0 6px;
   }
 }
 
