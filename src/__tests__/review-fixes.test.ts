@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { rng } from '../games/micro/core';
 import { createManagedTransport, REBUILD_AFTER_MS, type LinkFactory } from '../lib/transport';
 import { RoomEngine, ROOM_TIMINGS } from '../room/engine';
+import { createRoom, reduceRoom } from '../room/logic';
 import { createSimRoom, memoryStore, ROOM_CODE, SIM_GAMES, type SimPeer } from './sim/harness';
 import { SimNetwork } from './sim/network';
 
@@ -134,5 +135,25 @@ describe('R-02：bye のあと戻ってきたメンバーを「去った人」�
     expect(cClaimed).toBe(false);
     room.peers.b.node.thaw();
     expect(room.sim.clock.runUntil(() => room.converged(['b', 'c']) && snap(room.peers.c).state?.hostId === 'b', 20000)).toBe(true);
+  });
+});
+
+describe('R-07：reduceRoom のゲーム引きを hasGame にそろえる', () => {
+  const base = createRoom('ABCD', { id: 'h', name: 'H' }, 'counter');
+
+  it('R-07: ホスト自身でも、継承プロパティの名前（constructor など）は selectGame できない', () => {
+    for (const gameId of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+      expect(reduceRoom(base, { type: 'selectGame', gameId }, 'h', 0, SIM_GAMES)).toBe(base);
+    }
+  });
+
+  it('R-07: selectedGame が継承プロパティの名前でも、startGame・setOption は状態を変えない（例外も投げない）', () => {
+    const odd = { ...base, selectedGame: 'constructor' };
+    expect(reduceRoom(odd, { type: 'startGame', online: ['h'] }, 'h', 0, SIM_GAMES)).toBe(odd);
+    expect(reduceRoom(odd, { type: 'setOption', key: 'x', value: 1 }, 'h', 0, SIM_GAMES)).toBe(odd);
+  });
+
+  it('R-07: 登録済みのゲームは従来どおり選べる', () => {
+    expect(reduceRoom(base, { type: 'selectGame', gameId: 'rush' }, 'h', 0, SIM_GAMES).selectedGame).toBe('rush');
   });
 });

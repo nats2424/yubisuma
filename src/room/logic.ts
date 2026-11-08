@@ -91,6 +91,8 @@ export const isImplausibleJump = (next: RoomState, cur: RoomState): boolean =>
 // 悪意だけでなくデプロイ直後の版ずれ（新しい版のタブが新ゲームを選ぶ）でも起こるので、採用前に確かめる。
 // 継承プロパティを拾わないよう hasOwnProperty で見る
 const hasGame = (games: GameRegistry, id: string): boolean => Object.prototype.hasOwnProperty.call(games, id);
+// 登録の引きも同じ判定にそろえる（R-07：games[id] だと constructor などの継承プロパティを「登録あり」と見る）
+const gameOf = (games: GameRegistry, id: string) => (hasGame(games, id) ? games[id] : undefined);
 export const hasKnownGames = (state: RoomState, games: GameRegistry): boolean =>
   hasGame(games, state.selectedGame) && (state.game === null || hasGame(games, state.game.id));
 
@@ -178,18 +180,18 @@ export const reduceRoom = (
       return withChat(state, { id: `${by}_${now}_${msgSeq++}`, by, name: player.name, text, at: now });
     }
     case 'selectGame': {
-      if (!isHost || !games[action.gameId] || state.game) return state;
+      if (!isHost || !hasGame(games, action.gameId) || state.game) return state;
       return { ...state, selectedGame: action.gameId };
     }
     case 'setOption': {
-      const def = games[state.selectedGame];
+      const def = gameOf(games, state.selectedGame);
       const opt = def?.options?.find((o) => o.key === action.key);
-      if (!isHost || state.game || !opt || !opt.choices.some((c) => c.value === action.value)) return state;
+      if (!isHost || state.game || !def || !opt || !opt.choices.some((c) => c.value === action.value)) return state;
       const cur = state.gameOptions?.[def.id] ?? {};
       return { ...state, gameOptions: { ...state.gameOptions, [def.id]: { ...cur, [action.key]: action.value } } };
     }
     case 'startGame': {
-      const def = games[state.selectedGame];
+      const def = gameOf(games, state.selectedGame);
       if (!isHost || !def) return state;
       if (state.game && now - state.game.startedAt < START_GUARD_MS) return state;
       const online = new Set(action.online);
@@ -214,7 +216,7 @@ export const reduceRoom = (
     case 'game':
     case 'gameSystem': {
       if (!state.game) return state;
-      const def = games[state.game.id];
+      const def = gameOf(games, state.game.id);
       if (!def) return state;
       let actor: string;
       if (action.type === 'gameSystem') {
