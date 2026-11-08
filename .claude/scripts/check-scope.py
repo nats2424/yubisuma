@@ -37,6 +37,7 @@ SCOPES = {
     "cto": ["docs/dev/02-architecture.md"],
     "pjm": ["docs/dev/03-wbs.md"],
     "marketing": ["docs/dev/10-marketing-monetization.md"],
+    "sns-marketer": ["marketing/sns/*"],
     "reviewer": [],
 }
 

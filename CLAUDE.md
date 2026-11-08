@@ -54,12 +54,13 @@
 | cto | `docs/dev/02-architecture.md`（`src/room/types.ts` の変更承認） | 読み・書き（Bash なし） | ルート |
 | pjm | `docs/dev/03-wbs.md` | 読み・書き（Bash なし） | ルート |
 | marketing | `docs/dev/10-marketing-monetization.md` | 読み・書き（Bash なし） | ルート |
+| sns-marketer | `marketing/sns/**`（投稿パック・動画・録画スクリプト） | 読み・書き・Bash（投稿はしない） | worktree |
 | reviewer | なし（結果は報告で返し、オーケストレーターが `docs/dev/09-review.md` に保存） | 読み・Bash（編集なし） | ルート |
 | オーケストレーター | `CLAUDE.md`、`.claude/**`、`docs/DECISIONS.md`、`vite.config.ts`、`package.json`、`.gitignore` | すべて | ルート |
 
 ### 手順
 
-1. **コードを書く役割（backend・client・qa・security・designer）は、1 人で動かすときも必ず `isolation: worktree` で起動する。** メインの作業フォルダで直接編集させない。
+1. **コードを書く役割（backend・client・qa・security・designer・sns-marketer）は、1 人で動かすときも必ず `isolation: worktree` で起動する。** メインの作業フォルダで直接編集させない。
 2. 資料だけを書く役割（pdm・cto・pjm・marketing）と reviewer はルートで動かしてよい。
 3. マージの前に担当範囲を確認する：`python3 .claude/scripts/check-scope.py <役割> <base>..<worktree のブランチ>`。範囲外の変更があれば、理由を確かめてから取り込むか差し戻す。
 4. マージ後に `npm run typecheck`・`npm test`・`npm run build` を通してから push し、worktree とブランチを消す。
