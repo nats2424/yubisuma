@@ -102,6 +102,7 @@ export interface Transport {
   onMessage(cb: (msg: unknown) => void): () => void;   // 戻り値で購読解除
   onStatus(cb: (s: ConnectionStatus) => void): () => void;
   reconnect(): void;                                   // 今すぐ張り直す（failed からの再試行もこれ）
+  nudge(): void;                                       // 復帰時：failed なら reconnect()、reconnecting で Link が 5 秒以上前のものなら作り直す（R-01）
   setNetworkOnline(online: boolean): void;             // navigator の online/offline を伝える
   close(): void;
 }
@@ -353,6 +354,7 @@ requestBroadcast():   // commit・同期要求・古いホストへの反論 か
 - Supabase Link：`subscribe` コールバックの `SUBSCRIBED` → `onOpen`、`CHANNEL_ERROR` / `TIMED_OUT` / `CLOSED` → `onDown`。realtime-js 2.117.3 はソケット再接続時にチャンネルへ自動で再参加し、同じコールバックに `SUBSCRIBED` を再度通知する（ソース確認済み）。`close()` は `removeChannel`。
 - Local Link（デモモード）：生成直後に `onOpen`。以後ずっと `connected`。
 - `setNetworkOnline(false)`：`connected` なら `reconnecting` へ。`setNetworkOnline(true)`：`reconnecting` / `failed` なら `reconnect()`。
+- `nudge()`（R-01 で追加）：engine の `resume()` が呼ぶ。`failed` なら `reconnect()`、`reconnecting` は今の Link を作ってから `NUDGE_REBUILD_MIN_MS`（= `CONNECT_TIMEOUT_MS`）以上経っていれば作り直す。`connecting`（初回のリトライ中）と作ったばかりの Link はそのまま待つ。`online` と `visibilitychange` / `pageshow` がほぼ同時に来ても Link（本番では WebSocket）を 1 本しか作らないため。
 
 ### 3.2 アプリ層の無通信検知（engine）
 
@@ -470,7 +472,7 @@ tick（自分がホストでない・メンバーである）:
 ```
 resume():   // visibilitychange→visible / pageshow / online、または tick 間隔 > RESUME_GAP_MS を検知
   resumedAt = now     // 9 秒間は引き継ぎ判定をしない（古い lastSeen で誤って引き継がないため）
-  transport.status !== 'connected' → transport.reconnect()
+  transport.status !== 'connected' → transport.nudge()（張り直したばかりの Link は捨てない。R-01）
   hb を送る
   自分がホスト → requestBroadcast()（他の誰かが新しいホストなら反論されて自分が降りる）
   ホストでない → sync を送る + 再送処理
@@ -821,7 +823,7 @@ export type RoomHandle = {
 | P1-1 | `supabaseLinkFactory`（§3.1） | **Phase 1 で変更**：Link ごとに `RealtimeClient`（WebSocket）を 1 つ作り、`close()` は `removeChannel` の後に `disconnect`。共有の `createClient` は使わない（`@supabase/supabase-js` が再エクスポートする `RealtimeClient` を使うので依存は増えない） | realtime-js 2.117.3 の `channel()` は同じ topic のチャンネルがあるとそれを返す。`removeChannel` は非同期なので、共有クライアントだと作り直し直後に古い（閉じかけの）チャンネルが返り、作り直しにならない。さらに古いチャンネルが閉じたときの `_remove` が topic 一致で新しいチャンネルまで一覧から消す。作り直しはソケットが死んでいる疑いがあるときなので、ソケットごと新しくする方が確実 |
 | P1-2 | `Transport`（§1.3） | 旧 `Transport`（`ready: Promise`）は §1.3 の形に置き換えた。Client は `Transport` を import していないので影響なし | 設計どおり |
 | P1-3 | `EngineDeps` | **Phase 1 で追加（後方互換）**：任意項目 `defaultGame?: string`（部屋を作るときに選ばれているゲーム。省略時は `games` の先頭）。`useRoom` は `DEFAULT_GAME` を渡す | engine を registry から独立させ、テストで別のゲーム一覧を注入できるようにするため |
-| P1-4 | ホスト喪失の判定（§5.3） | `bye` を受けた人と「ホストからの `sync`」を `departed` に入れ、ホスト喪失を即時判定する。`departed` はその人から `state` を受けたら外す（`bye` の後に bfcache から戻ったホストが配信を再開した場合など）。`lastSeen` の更新では外さない | リロードしたホストの新しい engine は sync / join を送り続けるので、`lastSeen` だけで判定すると「ホストは生きている」と見えて誰も引き継がず、全員が止まる |
+| P1-4 | ホスト喪失の判定（§5.3） | `bye` を受けた人と「ホストからの `sync`」を `departed` に入れ、ホスト喪失を即時判定する。`departed` はその人から `state`・`action`・`hb`（状態を持つ端末だけが送るもの）を受けたら外す（`bye` の後に bfcache から戻った人が配信・操作・生存通知を再開した場合など。`action`・`hb` は R-02 で追加）。`sync` / `join` など、それ以外の受信による `lastSeen` の更新では外さない | リロードしたホストの新しい engine は sync / join を送り続けるので、`lastSeen` だけで判定すると「ホストは生きている」と見えて誰も引き継がず、全員が止まる |
 | P1-5 | 無通信検知（§3.2） | 条件に「`lastSeen` に誰かいる（全員が `bye` で去ったのではない）」を加えた | 全員が明示的に去った部屋で張り直しをしない |
 | P1-6 | 状態の採用（§5.2） | 採用した状態の `hostId` が自分で、直前まで自分がホストでなかった場合（旧ホストの退出で譲られた）、outbox の未確認分を適用してから配信する | 引き継ぎ時（§5.3）と同じく、送り先を失った操作を失わないため。配信で他の人の `departed` も外れる |
 | P1-7 | `status`（§3.3） | 状態を持っていれば、自分がまだ `players` にいなくても（join の処理待ち）`ready` を返す（旧実装と同じ）。`full` / `kicked` / `left` になった engine は以後送信しない（`full` は受信だけ続ける） | 旧実装の画面遷移を変えないため |
@@ -862,3 +864,12 @@ export type RoomHandle = {
 
 - テスト：`qa-final.test.ts`「QA-BUG-07: …」2 件（skip を外して通過）、「QA-BUG-07 の修正後も、参加順で先の人が bye なしで消えていれば…」。
 - 既知の残り：スリープ明けで状態が古い端末が**参加順でちょうど次の候補**のときに bye が届くと、他の端末はその端末に譲り、その端末は古い状態で引き継ぐ（巻き戻りうる）。「状態が古い」ことを他の端末へ伝える手段がプロトコルにないため。次フェーズで、引き継ぎ直後に参加者の持つ版を突き合わせる・sync 応答で鮮度を知らせるなどを CTO と検討する。
+
+### 最終レビュー（09）対応
+
+| # | 票 | 対象 | 内容 | 理由 |
+| --- | --- | --- | --- | --- |
+| P2-12 | R-01 | `transport.ts` `nudge`・`engine.ts` `resume` | `resume()` の張り直しを `reconnect()` から `nudge()` に変更（§3.1） | `online` 1 回で Link を 2 本作り、1 本目をすぐ捨てていた。初回接続中の `resume()` でリトライ回数も 0 に戻っていた |
+| P2-13 | R-02 | `engine.ts` `handleRaw` | `departed` を `state` だけでなく `action`・`hb` の受信でも外す（P1-4） | bye のあと戻ったメンバーが他の端末の `departed` に残り、猶予中の引き継ぎ候補から外れて QA-BUG-07 と同じ「先の人を飛ばす」が起きていた |
+
+- テスト：`review-fixes.test.ts`「R-01: …」「R-02: …」。
