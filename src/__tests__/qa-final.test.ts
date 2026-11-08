@@ -56,8 +56,7 @@ describe('QA 最終再確認：接続・復帰直後の端末がホストの bye
     expect(stateOf(room.peers[next]).hostId).toBe(next);
   });
 
-  // 修正後に skip を外す（docs/dev/04-qa-report.md QA-BUG-07）
-  it.skip('QA-BUG-07: スリープ明け直後の参加者（ID が小さい）がホストの bye を受けても、古い状態で引き継いで進行を巻き戻さない', () => {
+  it('QA-BUG-07: スリープ明け直後の参加者（ID が小さい）がホストの bye を受けても、古い状態で引き継いで進行を巻き戻さない', () => {
     const { room, next, sleeper, countOf } = resumeThenBye(['m', 'n', 'a']);
     expect(room.converged([next, sleeper])).toBe(true);
     // 実際は a が古い状態のまま epoch 2 でホストを名乗り、n の epoch 2 に ID の大小で勝って、n の操作が 20 → 18 に巻き戻る
@@ -65,8 +64,7 @@ describe('QA 最終再確認：接続・復帰直後の端末がホストの bye
     expect(stateOf(room.peers[next]).hostId).toBe(next);
   });
 
-  // 修正後に skip を外す（docs/dev/04-qa-report.md QA-BUG-07）
-  it.skip('QA-BUG-07: 参加して 1 秒以内の端末がホストの bye を受けても、自分をホストにせず次の候補（b）に譲る', () => {
+  it('QA-BUG-07: 参加して 1 秒以内の端末がホストの bye を受けても、自分をホストにせず次の候補（b）に譲る', () => {
     const room = readyRoom(['a', 'b', 'c']);
     const x = room.addPeer('x');
     expect(room.sim.clock.runUntil(() => snap(x).state?.players.some((p) => p.id === 'x') === true, 3000)).toBe(true);
@@ -81,5 +79,20 @@ describe('QA 最終再確認：接続・復帰直後の端末がホストの bye
     // 実際は x が 300ms 以内に epoch 2 でホストを名乗り、全員が x をホストにする（参加順で先の b・c を飛ばす）
     expect(xClaimed).toBe(false);
     expect(stateOf(room.peers.b).hostId).toBe('b');
+  });
+
+  // QA-BUG-07 の修正（猶予中は去ったと分かっている人以外を候補とみなす）で、bye なしで消えた人に譲ったまま止まらないこと
+  it('QA-BUG-07 の修正後も、参加順で先の人が bye なしで消えていれば、猶予を過ぎた端末が bye から 1 秒以内に引き継ぐ', () => {
+    const room = readyRoom(['a', 'b', 'c']);
+    room.peers.b.node.freeze();
+    room.settle(ROOM_TIMINGS.OFFLINE_AFTER_MS + 1000);
+    const x = room.addPeer('x');
+    expect(room.sim.clock.runUntil(() => snap(x).state?.players.some((p) => p.id === 'x') === true, 3000)).toBe(true);
+    room.peers.a.engine.dispose();
+    room.settle(1000);
+    expect(snap(room.peers.c).isHost).toBe(true);
+    room.settle(2000);
+    expect(room.converged(['c', 'x'])).toBe(true);
+    expect(stateOf(x).hostId).toBe('c');
   });
 });

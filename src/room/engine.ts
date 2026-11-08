@@ -506,11 +506,17 @@ export class RoomEngine {
     const hostGone = this.departed.has(host);
     // 接続直後・復帰直後は lastSeen が当てにならないので、「しばらく聞こえない」での判定はしない。
     // ただし明示的な離脱は古い lastSeen の誤判定ではないので猶予を飛ばす（QA-BUG-01：猶予が bye にも効き、交代に約 8 秒かかっていた）
-    if (!hostGone && now - Math.max(this.connectedAt, this.resumedAt) < this.t.OFFLINE_AFTER_MS) return;
+    const inGrace = now - Math.max(this.connectedAt, this.resumedAt) < this.t.OFFLINE_AFTER_MS;
+    if (!hostGone && inGrace) return;
     const seen = this.lastSeen.get(host);
     const lost = hostGone || seen === undefined || now - seen >= this.t.OFFLINE_AFTER_MS;
+    // 猶予中は lastSeen が空か古く、this.online がほぼ自分だけになる。そのまま選ぶと参加・復帰直後の端末が
+    // 参加順で先の人を飛ばして（スリープ明けなら古い状態のまま）自分を選んでしまう（QA-BUG-07）。
+    // そこで猶予中は「去ったと分かっている人以外のメンバーは全員オンライン」とみなして選ぶ。
+    // 先の人が実は bye なしで消えていても、猶予を過ぎた他の端末が実際の lastSeen で判定して引き継ぐ（全員が猶予中なら猶予明けに従来どおり判定）
+    const pool = inGrace ? cur.players.map((p) => p.id).filter((id) => !this.departed.has(id)) : [...this.online];
     // 引き継げない端末（join を送っている＝状態待ちなど）は、オンラインでも候補から外す（P2-10）
-    const candidates = new Set([...this.online].filter((id) => !this.joining.has(id)));
+    const candidates = new Set(pool.filter((id) => !this.joining.has(id)));
     if (!lost || pickNextHost(cur, candidates, host) !== me) return;
     const othersOnline = cur.players.some((p) => p.id !== me && p.id !== host && this.online.has(p.id));
     const lone = this.lastRecvAt === null || now - this.lastRecvAt >= this.t.LONE_TAKEOVER_MS;
