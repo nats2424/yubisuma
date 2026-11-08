@@ -98,3 +98,21 @@
 **Approve**
 
 必須の指摘はありません。R-01・R-02（Backend）と R-03（Client）は推奨として、次の修正で対応してください。好み（R-04〜R-08）は任意です。QA-BUG-03・QA-BUG-05 の skip は 04 の判断どおり次フェーズの既知の票として扱います。
+
+## 対応結果（Backend）
+
+| ID | 結果 | コミット | 内容 |
+| --- | --- | --- | --- |
+| R-01 | 修正済み | 028cf13 | `Transport.nudge()` を追加し、`resume()` は `reconnect()` の代わりにこれを呼ぶ。`failed` なら `reconnect()`、`reconnecting` は今の Link を作ってから `CONNECT_TIMEOUT_MS`（5 秒）以上経っていれば作り直し、作ったばかりの Link と `connecting`（初回リトライ中）はそのまま待つ。`online` 1 回で作る Link は 1 本、直後に `resume()` が 2 回続いても 1 本、初回接続中の `resume()` で張り直さない（リトライ回数も戻らない）ことを確認。長く `reconnecting` の Link は従来どおり `resume()` で今すぐ作り直す |
+| R-02 | 修正済み | ac834e1 | `state` / `action` / `hb` を受けたときに `joining` と同じく `departed` からも外す（`state` だけの削除はまとめた）。`sync` / `join` では外さない（P1-4 の「リロードしたホストの sync / join で生きていると見なさない」を保つ）。3 人の部屋で b が bye → 戻ったあと c の `departed` が空になること、c が猶予中にホストの bye を受けても b を飛ばして名乗らず b に収束することを確認 |
+| R-03 | 修正済み | 96d3329 | README を「切れてから 10 秒以内の操作は、つながり直したあとに自動で送り直します（それより古い操作は取り消されます）」に変更（README は Client 担当だが、今回の依頼に基づき Backend がこの 1 文だけ修正） |
+| R-04 | 修正済み | 3882da8 | コメントを `pickNextHost` の直前へ移動 |
+| R-05 | 修正済み | 4321389 | SEC-06 のテストのコメントを修正後の挙動（メンバー以外の行は tick ごとに消える）の説明に変更 |
+| R-06 | 修正済み | 9cd4629 | `MICRO_TEXT` の `id` を `keyof typeof TUNING.micro` で型付けし、型アサーションを外した（調整値のない ID を足すと型エラーになることを確認） |
+| R-07 | 修正済み | 85862f1 | `selectGame` を `hasGame`、`setOption` / `startGame` / `game` の引きを `hasGame` を通す `gameOf` にそろえた。登録済みのゲームの挙動は変わらない |
+| R-08 | 修正済み | f88a21c | `msgSeq` を削除。ID は `withChat` で状態から決める（同じ時刻の既存メッセージの末尾番号の最大 + 1。形式は従来どおり `s{at}_{n}` / `{by}_{at}_{n}`）。ID は React の key にだけ使われ、`compareStates` などの比較には使っていないので、同期の挙動は変わらない。同じ入力で状態が丸ごと一致すること、同じミリ秒に複数件でも ID が重ならないことを確認 |
+
+- 再現テスト：`src/__tests__/review-fixes.test.ts`（12 件）。R-01 の 3 件・R-02 の 2 件は修正前に失敗することを確認してから修正した。R-07 の継承プロパティ名の `selectGame` も修正前は失敗。
+- 設計書：`docs/dev/02-architecture.md` の §3.1・§5.4・P1-4 を更新し、P2-12（R-01）・P2-13（R-02）を追記。
+- 残る注意（R-02）：bye より後に、その人が bye の直前に送った `hb` / `action` が（遅延のゆらぎで順序が入れ替わって）届くと、去った扱いが外れて `lastSeen` の判定（9 秒）に戻る。修正前から `state` で同じことが起きうる形で、bye が届かなかった場合と同じ挙動に落ちるだけなので許容した。
+- 確認：`npm run typecheck` OK、`npm test` 5 回連続で 16 ファイル・222 件通過・2 件 skip（QA-BUG-03・05、従来どおり）・失敗 0、`npm run build` OK（JS 326.3KB / gzip 102.7KB）。
