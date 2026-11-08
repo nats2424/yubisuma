@@ -327,12 +327,13 @@ export class RoomEngine {
     if (msg.t === 'state' || msg.t === 'action' || msg.t === 'hb') {
       this.heardStateful = true;
       this.joining.delete(msg.from);
+      // bye のあと（bfcache などから）戻ってきた人は、状態・操作・生存通知を送ってくる。
+      // 去った扱いを残すと、猶予中の引き継ぎ候補から生きている人を外してしまう（R-02。QA-BUG-07 と同じ形の誤り）
+      this.departed.delete(msg.from);
     }
     this.stallFired = false;
     switch (msg.t) {
       case 'state':
-        // ホストとして状態を配っているので、去った扱いを取り消す
-        this.departed.delete(msg.from);
         this.onState(msg);
         break;
       case 'action':
