@@ -182,12 +182,14 @@
 
 | ID | 重大度 | 要約 | 担当 | skip テスト | 状態 |
 | --- | --- | --- | --- | --- | --- |
-| SEC-01 | 中 | 巨大 epoch / version の偽の状態 1 通で部屋が恒久的に壊れる | Backend | `security-engine` SEC-01 ×2 | 修正済み（Backend：`isImplausibleJump` で epoch +1000・version +100 万を超える飛びを捨てる。ホストは配り直す） |
-| SEC-02 | 中 | 他人の ID で巨大 seq を送ると、その人は二度と操作できない | Backend | `security-protocol` SEC-02 | 修正済み（Backend：`acceptAction` で処理済み seq + `SEQ_JUMP_MAX`（1000）超を捨てる） |
-| SEC-03 | 中 | `__proto__` 等の ID でワードウルフ処刑不能・大富豪停止 | Backend | `security-protocol` SEC-03 | 修正済み（Backend：`isId` を `[A-Za-z0-9_-]` かつ `Object.prototype` にない名前に限定） |
-| SEC-04 | 中 | 未知の `selectedGame` / `game.id` で全員の画面が真っ白（版ずれでも） | Backend + Client | `security-engine` SEC-04 | Backend 側修正済み（`hasKnownGames` で採用・復元前に確認）。表示側のガードは Client |
-| SEC-05 | 低 | 深い入れ子の `game.state` で受信処理から例外が漏れる | Backend | `security-engine` SEC-05 | 修正済み（Backend：`game.state` の入れ子 64 段まで。`saveNow` の文字列化を try 内に） |
-| SEC-06 | 低 | 違う ID の大量送信で生存確認の表が増え続ける | Backend | `security-engine` SEC-06 | 修正済み（Backend：tick ごとに非メンバーの `lastSeen` / `departed` と期限切れの `rate` / `syncReplyAt` を削除） |
+| SEC-01 | 中 | 巨大 epoch / version の偽の状態 1 通で部屋が恒久的に壊れる | Backend | `security-engine` SEC-01 ×2 | 修正済み（Backend：`isImplausibleJump` で epoch +1000・version +100 万を超える飛びを捨てる。ホストは配り直す）。**QA 最終再確認で修正確認済み**（自動 2 件、2026-11-08） |
+| SEC-02 | 中 | 他人の ID で巨大 seq を送ると、その人は二度と操作できない | Backend | `security-protocol` SEC-02 | 修正済み（Backend：`acceptAction` で処理済み seq + `SEQ_JUMP_MAX`（1000）超を捨てる）。**QA 最終再確認で修正確認済み**（自動 1 件、2026-11-08） |
+| SEC-03 | 中 | `__proto__` 等の ID でワードウルフ処刑不能・大富豪停止 | Backend | `security-protocol` SEC-03 | 修正済み（Backend：`isId` を `[A-Za-z0-9_-]` かつ `Object.prototype` にない名前に限定）。**QA 最終再確認で修正確認済み**（自動 1 件、2026-11-08） |
+| SEC-04 | 中 | 未知の `selectedGame` / `game.id` で全員の画面が真っ白（版ずれでも） | Backend + Client | `security-engine` SEC-04 | 修正済み（Backend：`hasKnownGames` で採用・復元前に確認。Client：`findGame` とエラー境界 3 か所）。**QA 最終再確認で修正確認済み**（自動 1 件＋E2E、2026-11-08） |
+| SEC-05 | 低 | 深い入れ子の `game.state` で受信処理から例外が漏れる | Backend | `security-engine` SEC-05 | 修正済み（Backend：`game.state` の入れ子 64 段まで。`saveNow` の文字列化を try 内に）。**QA 最終再確認で修正確認済み**（自動 1 件＋E2E、2026-11-08） |
+| SEC-06 | 低 | 違う ID の大量送信で生存確認の表が増え続ける | Backend | `security-engine` SEC-06 | 修正済み（Backend：tick ごとに非メンバーの `lastSeen` / `departed` と期限切れの `rate` / `syncReplyAt` を削除）。**QA 最終再確認で修正確認済み**（自動 1 件、2026-11-08） |
+
+**QA 最終再確認（2026-11-08）**：SEC-01〜06 の `it.skip` 7 件はすべて `it` に戻っており、`npm test` 5 回連続・`--sequence.shuffle` 1 回で通過。ブラウザ E2E（デモモード、360 / 1280px）で BroadcastChannel から `selectedGame: 'constructor'`・`game.id: '__proto__'`・10 万段の入れ子の `game.state` を送ると、どの端末も採用せず画面は変わらない（SEC-04 / 05 の Backend 側）。形の壊れた大富豪の `game.state`（登録済みのゲーム ID なので採用される。R-02）はゲーム枠のエラー境界「表示できませんでした」になり、メンバー・チャットは残る（SEC-04 の Client 側）。真っ白 0・pageerror 0。**6 件とも修正確認済み**。詳細は `04-qa-report.md` §6。新しいセキュリティ上の不具合は見つかっていない（QA-BUG-07 は引き継ぎ判定の不具合で、攻撃ではなく通常の操作で起きる）。
 
 閉じる条件：対応する `it.skip` を `it` に戻して `npm test` が通ること（Security が再確認して本書に記録する。WBS §5）。
 
