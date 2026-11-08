@@ -108,7 +108,6 @@ const withChat = (state: RoomState, msg: ChatMessage): RoomState => ({
   chat: [...state.chat, msg].slice(-CHAT_KEEP),
 });
 
-// オンラインのメンバーから次のホスト候補を選ぶ（参加順で最も古い人）
 // この時刻までチャットを送れない（送れるなら 0）。
 // 追加の状態を持たず state.chat の by / at から数えるので、ホスト交代後も同じ判定になる。
 // Client のボタン無効化とホストの受付判定で同じ式を使い、表示と実際の挙動をずらさない。
@@ -122,6 +121,7 @@ export const chatBlockedUntil = (state: RoomState, me: string, now: number): num
   return until > now ? until : 0;
 };
 
+// オンラインのメンバーから次のホスト候補を選ぶ（参加順で最も古い人）
 export const pickNextHost = (state: RoomState, online: Set<string>, exclude?: string): string | null =>
   state.players.find((p) => p.id !== exclude && online.has(p.id))?.id ?? null;
 
