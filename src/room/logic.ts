@@ -96,18 +96,25 @@ const gameOf = (games: GameRegistry, id: string) => (hasGame(games, id) ? games[
 export const hasKnownGames = (state: RoomState, games: GameRegistry): boolean =>
   hasGame(games, state.selectedGame) && (state.game === null || hasGame(games, state.game.id));
 
-let msgSeq = 0;
-const systemMessage = (text: string, now: number): ChatMessage => ({
-  id: `s${now}_${msgSeq++}`,
-  by: null,
-  name: '',
-  text,
-  at: now,
-});
+// メッセージ ID は今の状態から決める（モジュール変数のカウンタを使わず、同じ入力なら同じ結果になるように。R-08）。
+// ID には時刻を含むので、同じ時刻（同じミリ秒）の既存メッセージの末尾番号の最大 + 1 を付ければチャット内で重ならない。
+// ホスト交代後に時計がずれていても、時刻ごとに数えるので重ならない
+type NewChat = Omit<ChatMessage, 'id'>;
+const nextMsgId = (state: RoomState, msg: NewChat): string => {
+  let n = 0;
+  for (const m of state.chat) {
+    if (m.at !== msg.at) continue;
+    const k = /_(\d+)$/.exec(m.id);
+    if (k) n = Math.max(n, Number(k[1]) + 1);
+  }
+  return msg.by === null ? `s${msg.at}_${n}` : `${msg.by}_${msg.at}_${n}`;
+};
 
-const withChat = (state: RoomState, msg: ChatMessage): RoomState => ({
+const systemMessage = (text: string, now: number): NewChat => ({ by: null, name: '', text, at: now });
+
+const withChat = (state: RoomState, msg: NewChat): RoomState => ({
   ...state,
-  chat: [...state.chat, msg].slice(-CHAT_KEEP),
+  chat: [...state.chat, { id: nextMsgId(state, msg), ...msg }].slice(-CHAT_KEEP),
 });
 
 // この時刻までチャットを送れない（送れるなら 0）。
@@ -177,7 +184,7 @@ export const reduceRoom = (
       if (!player || !text) return state;
       // 連投はホストで捨てる。Client のボタン無効化と同じ式で判定する（AC-20）
       if (chatBlockedUntil(state, by, now) > now) return state;
-      return withChat(state, { id: `${by}_${now}_${msgSeq++}`, by, name: player.name, text, at: now });
+      return withChat(state, { by, name: player.name, text, at: now });
     }
     case 'selectGame': {
       if (!isHost || !hasGame(games, action.gameId) || state.game) return state;

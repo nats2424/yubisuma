@@ -157,3 +157,37 @@ describe('R-07：reduceRoom のゲーム引きを hasGame にそろえる', () =
     expect(reduceRoom(base, { type: 'selectGame', gameId: 'rush' }, 'h', 0, SIM_GAMES).selectedGame).toBe('rush');
   });
 });
+
+describe('R-08：チャット ID をモジュール変数ではなく状態から決める', () => {
+  const room = () => {
+    let s = createRoom('ABCD', { id: 'h', name: 'H' }, 'counter');
+    s = reduceRoom(s, { type: 'join', name: 'B' }, 'b', 0, SIM_GAMES);
+    return s;
+  };
+
+  it('R-08: 同じ入力なら同じ状態（チャット ID も含めて）になる', () => {
+    const run = () => {
+      let s = room();
+      s = reduceRoom(s, { type: 'chat', text: 'やあ' }, 'b', 100, SIM_GAMES);
+      s = reduceRoom(s, { type: 'startGame', online: ['h', 'b'] }, 'h', 200, SIM_GAMES);
+      return s;
+    };
+    expect(run()).toEqual(run());
+  });
+
+  it('R-08: 同じミリ秒に何件送っても、保持しているチャットの ID は重ならない', () => {
+    let s = room();
+    // 連投制限にかからないよう、同じ時刻に別の人・システムを混ぜる
+    s = reduceRoom(s, { type: 'join', name: 'C' }, 'c', 500, SIM_GAMES);
+    s = reduceRoom(s, { type: 'chat', text: '1' }, 'b', 500, SIM_GAMES);
+    s = reduceRoom(s, { type: 'chat', text: '2' }, 'c', 500, SIM_GAMES);
+    s = reduceRoom(s, { type: 'chat', text: '3' }, 'b', 500, SIM_GAMES);
+    s = reduceRoom(s, { type: 'startGame', online: ['h', 'b', 'c'] }, 'h', 500, SIM_GAMES);
+    for (let t = 1000; t < 1000 + 200 * 10; t += 10) {
+      s = reduceRoom(s, { type: 'chat', text: 'x' }, ['h', 'b', 'c'][(t / 10) % 3], t - (t % 30), SIM_GAMES);
+    }
+    const ids = s.chat.map((m) => m.id);
+    expect(s.chat.length).toBeGreaterThan(5);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
