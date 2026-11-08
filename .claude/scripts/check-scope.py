@@ -31,12 +31,14 @@ SCOPES = {
     "security": ["src/__tests__/security-*.test.ts", "docs/dev/05-security-report.md"],
     "designer": ["design/*"],
     "pdm": [
+        "docs/strategy/*-pdm-*.md",
         "docs/dev/01-pdm-spec.md", "docs/dev/06-target.md",
         "docs/dev/07-user-journey.md", "docs/dev/08-pmf-strategy.md",
     ],
-    "cto": ["docs/dev/02-architecture.md"],
-    "pjm": ["docs/dev/03-wbs.md"],
-    "marketing": ["docs/dev/10-marketing-monetization.md"],
+    "cto": ["docs/dev/02-architecture.md", "docs/strategy/*-cto-*.md"],
+    "pjm": ["docs/dev/03-wbs.md", "docs/strategy/*-pjm-*.md"],
+    "marketing": ["docs/dev/10-marketing-monetization.md", "docs/strategy/*-marketing-*.md"],
+    "strategy-manager": ["docs/strategy/*-strategy-manager-*.md"],
     "sns-marketer": ["marketing/sns/*"],
     "reviewer": [],
 }
