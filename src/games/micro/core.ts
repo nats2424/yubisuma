@@ -17,7 +17,9 @@ export type MicroMeta = {
 
 // 表示用の文言だけをここに持ち、制限時間（baseMs / scales）は調整値 TUNING.micro から合成する
 const TIMING_SEC = TUNING.micro.timing.params.targetMs / 1000;
-const MICRO_TEXT: Pick<MicroMeta, 'id' | 'title' | 'hint'>[] = [
+// id を TUNING.micro のキーで型付けし、調整値のないミニゲームを足したら型エラーで気づけるようにする（R-06）
+type MicroId = keyof typeof TUNING.micro;
+const MICRO_TEXT: (Pick<MicroMeta, 'title' | 'hint'> & { id: MicroId })[] = [
   { id: 'mash', title: '連打！', hint: 'ボタンをとにかく連打' },
   { id: 'stop', title: '止めろ！', hint: '針が緑のゾーンに来たらタップ' },
   { id: 'whack', title: 'タッチ！', hint: '出てきた的をタップ' },
@@ -31,7 +33,7 @@ const MICRO_TEXT: Pick<MicroMeta, 'id' | 'title' | 'hint'>[] = [
 ];
 
 export const MICRO_META: MicroMeta[] = MICRO_TEXT.map((m) => {
-  const t: MicroTuning = (TUNING.micro as Record<string, MicroTuning>)[m.id];
+  const t: MicroTuning = TUNING.micro[m.id];
   return { ...m, baseMs: t.baseMs, scales: t.scales };
 });
 
