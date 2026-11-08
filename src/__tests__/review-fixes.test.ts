@@ -2,8 +2,10 @@
 // 時刻は SimClock だけを使い、ゲーム側の Math.random はシード固定（qa-final.test.ts と同じ方針）。
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { rng } from '../games/micro/core';
-import { ROOM_TIMINGS } from '../room/engine';
-import { createSimRoom, type SimPeer } from './sim/harness';
+import { createManagedTransport, REBUILD_AFTER_MS, type LinkFactory } from '../lib/transport';
+import { RoomEngine, ROOM_TIMINGS } from '../room/engine';
+import { createSimRoom, memoryStore, ROOM_CODE, SIM_GAMES, type SimPeer } from './sim/harness';
+import { SimNetwork } from './sim/network';
 
 beforeEach(() => {
   vi.spyOn(Math, 'random').mockImplementation(rng(4242));
@@ -13,6 +15,86 @@ afterEach(() => {
 });
 
 const snap = (p: SimPeer) => p.engine.getSnapshot();
+
+// Link を作った回数を数えられる 1 人部屋（本番と同じ ManagedTransport・RoomEngine）
+const countedEngine = () => {
+  const net = new SimNetwork({ seed: 1 });
+  const node = net.node('h');
+  let links = 0;
+  const factory: LinkFactory = (room, ev) => {
+    links++;
+    return node.linkFactory(room, ev);
+  };
+  const clock = node.clockFor();
+  const engine = new RoomEngine({
+    code: ROOM_CODE,
+    me: 'h',
+    name: 'H',
+    create: true,
+    transport: createManagedTransport(factory, ROOM_CODE, clock),
+    clock,
+    storage: memoryStore(),
+    games: SIM_GAMES,
+    defaultGame: 'counter',
+  });
+  engine.start();
+  return { net, node, engine, links: () => links };
+};
+
+describe('R-01：復帰のたびに Link を二重に作らない', () => {
+  it('R-01: online イベント 1 回で作る Link は 1 本', () => {
+    const { net, engine, links } = countedEngine();
+    expect(net.clock.runUntil(() => engine.getSnapshot().connection === 'connected', 5000)).toBe(true);
+    engine.setNetworkOnline(false);
+    const before = links();
+    engine.setNetworkOnline(true);
+    expect(links() - before).toBe(1);
+    expect(net.clock.runUntil(() => engine.getSnapshot().connection === 'connected', 5000)).toBe(true);
+  });
+
+  it('R-01: online の直後に visibilitychange / pageshow の resume が来ても、張り直したばかりの Link を捨てない', () => {
+    const { net, engine, links } = countedEngine();
+    expect(net.clock.runUntil(() => engine.getSnapshot().connection === 'connected', 5000)).toBe(true);
+    engine.setNetworkOnline(false);
+    const before = links();
+    engine.setNetworkOnline(true);
+    engine.resume();
+    engine.resume();
+    expect(links() - before).toBe(1);
+    expect(net.clock.runUntil(() => engine.getSnapshot().connection === 'connected', 5000)).toBe(true);
+  });
+
+  it('R-01: 初回接続中（connecting）の resume では張り直さない', () => {
+    const { engine, links } = countedEngine();
+    expect(engine.getSnapshot().connection).toBe('connecting');
+    engine.resume();
+    expect(links()).toBe(1);
+  });
+
+  it('R-01: failed の transport は nudge() で接続し直す（resume からの再試行は従来どおり）', () => {
+    const net = new SimNetwork({ seed: 1 });
+    const node = net.node('a');
+    node.failConnects(4);
+    const t = createManagedTransport(node.linkFactory, ROOM_CODE, node.clockFor());
+    expect(net.clock.runUntil(() => t.status === 'failed', 60000)).toBe(true);
+    t.nudge();
+    expect(t.status).toBe('connecting');
+    expect(net.clock.runUntil(() => t.status === 'connected', 5000)).toBe(true);
+  });
+
+  it('R-01 の修正後も、reconnecting が続いている Link は resume で今すぐ作り直す', () => {
+    const { net, node, engine, links } = countedEngine();
+    expect(net.clock.runUntil(() => engine.getSnapshot().connection === 'connected', 5000)).toBe(true);
+    node.disconnect();
+    expect(engine.getSnapshot().connection).toBe('reconnecting');
+    net.clock.advance(REBUILD_AFTER_MS - 1000);
+    const before = links();
+    engine.resume();
+    expect(links() - before).toBe(1);
+    node.restore();
+    expect(net.clock.runUntil(() => engine.getSnapshot().connection === 'connected', 5000)).toBe(true);
+  });
+});
 
 // engine の内部表（テストからの観察用）
 const departedOf = (p: SimPeer) => [...(p.engine as unknown as { departed: Set<string> }).departed];

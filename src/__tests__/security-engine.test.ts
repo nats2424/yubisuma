@@ -149,6 +149,7 @@ describe('SEC-05 / SEC-06: 異常な量・形のデータ', () => {
         },
         onStatus: () => () => {},
         reconnect: () => {},
+        nudge: () => {},
         setNetworkOnline: () => {},
         close: () => {},
       },

@@ -249,8 +249,9 @@ export class RoomEngine {
     this.lastTickAt = now;
     const { transport, me } = this.d;
     if (transport.status !== 'connected') {
-      // つながったら handleStatus → onConnected が同期要求を送る
-      transport.reconnect();
+      // つながったら handleStatus → onConnected が同期要求を送る。
+      // reconnect() ではなく nudge()：online の直後に visibilitychange / pageshow が続いても、張り直したばかりの Link を捨てない（R-01）
+      transport.nudge();
       this.emit();
       return;
     }
@@ -271,6 +272,7 @@ export class RoomEngine {
 
   setNetworkOnline = (online: boolean): void => {
     if (this.disposed) return;
+    // online なら transport が張り直し、続く resume() の nudge() はその Link を作り直さない（R-01）
     this.d.transport.setNetworkOnline(online);
     if (online) this.resume();
     else this.emit();

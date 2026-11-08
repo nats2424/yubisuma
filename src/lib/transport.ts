@@ -27,6 +27,9 @@ export interface Transport {
   onMessage(cb: (msg: unknown) => void): () => void; // 戻り値で購読解除
   onStatus(cb: (s: ConnectionStatus) => void): () => void;
   reconnect(): void; // 今すぐ張り直す（failed からの再試行もこれ）
+  // 復帰（visibilitychange / pageshow / online / スリープ明け）時に呼ぶ。張り直しが要るときだけ張り直す。
+  // 復帰の合図はほぼ同時に何度も来るので、reconnect() を毎回呼ぶと作ったばかりの Link を捨てて作り直してしまう（R-01）
+  nudge(): void;
   setNetworkOnline(online: boolean): void; // navigator の online/offline を伝える
   close(): void;
 }
@@ -37,6 +40,9 @@ export const CONNECT_TIMEOUT_MS = 5000;
 export const RETRY_DELAYS_MS: readonly number[] = [1000, 2000, 4000];
 // reconnecting が続いたら Link を作り直す間隔
 export const REBUILD_AFTER_MS = 8000;
+// nudge() で reconnecting の Link を作り直すのは、その Link を作ってからこれだけ経ったときだけ。
+// 1 回の接続試行の待ちと同じにして、接続待ちの途中の Link は捨てない
+export const NUDGE_REBUILD_MIN_MS = CONNECT_TIMEOUT_MS;
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -110,6 +116,8 @@ class ManagedTransport implements Transport {
   // Link の世代。古い Link から遅れて届く通知を無視するため
   private gen = 0;
   private attempt = 0;
+  // いまの Link を作った時刻（nudge で作り直すかの判断用）
+  private linkOpenedAt = Number.NEGATIVE_INFINITY;
   private everConnected = false;
   private closed = false;
   private cancelTimer: (() => void) | null = null;
@@ -164,6 +172,17 @@ class ManagedTransport implements Transport {
     if (this.status === 'reconnecting' || this.status === 'failed') this.reconnect();
   }
 
+  nudge(): void {
+    if (this.closed) return;
+    if (this.status === 'failed') {
+      this.reconnect();
+      return;
+    }
+    // connecting はリトライの途中（reconnect すると回数が 0 に戻る）なので任せる。
+    // reconnecting は、作ったばかりの Link なら接続待ちを続け、古ければ（スリープ明けなど）今すぐ作り直す
+    if (this.status === 'reconnecting' && this.clock.now() - this.linkOpenedAt >= NUDGE_REBUILD_MIN_MS) this.openLink();
+  }
+
   close(): void {
     if (this.closed) return;
     this.closed = true;
@@ -179,6 +198,7 @@ class ManagedTransport implements Transport {
     this.clearTimer();
     this.closeLink();
     const gen = ++this.gen;
+    this.linkOpenedAt = this.clock.now();
     // 待ちのタイマーは Link を作る前に張る（Link が同期的に onOpen しても正しく解除されるように）
     if (this.everConnected) this.armTimer(() => this.openLink(), REBUILD_AFTER_MS);
     else this.armTimer(() => this.handleDown(gen, 'timeout'), CONNECT_TIMEOUT_MS);
