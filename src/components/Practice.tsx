@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MICRO_META, microMeta, nextMicroId, startMicroRound, type MicroResult, type MicroRound } from '../games/micro/core';
 import Hearts from '../games/micro/Hearts';
 import MicroStage from '../games/micro/MicroStage';
+import StageTrack from '../games/micro/StageTrack';
 import { speedForStage, speedUpRuleText, TUNING } from '../games/micro/tuning';
 import { Brand } from './Layout';
 import { Panel } from './ui';
@@ -83,9 +84,12 @@ export default function Practice() {
     body = (
       <div className="stack">
         <div className="rush-header">
-          <span className="stage-no">
-            STAGE {mode.stage}
-            <small className="muted"> クリア {mode.cleared}</small>
+          <span className="stage-wrap">
+            <span className="stage-no">
+              STAGE {mode.stage}
+              <small> クリア {mode.cleared}</small>
+            </span>
+            <StageTrack stage={mode.stage} />
           </span>
           <Hearts lives={mode.lives} max={LIVES} />
         </div>
@@ -96,6 +100,7 @@ export default function Practice() {
           now={now}
           waitingMessage=""
           holdVerdict
+          missNote="ライフが1つ減った"
           onSubmit={onChallengeResult}
           label={speedUp ? 'SPEED UP!' : `STAGE ${mode.stage}`}
         />

@@ -15,13 +15,15 @@ type Props = {
   waitingMessage?: string;
   // true なら判定表示を出したままにする（ひとり用：親が次へ進める）
   holdVerdict?: boolean;
+  // ミスの判定に添える一言（ライフ制のときだけ「ライフが1つ減った」）。責める言い方を避けるための表示だけの文言
+  missNote?: string;
 };
 
 // 終わった直後、ゲーム画面に判定を重ねて見せる時間
 export const VERDICT_MS = TUNING.stage.verdictMs;
 
 // 瞬間ミニゲーム1本分の進行：指示表示 → プレイ → 結果待ち
-export default function MicroStage({ round, playing, now, onSubmit, existing, label, waitingMessage = 'みんなを待っています', holdVerdict = false }: Props) {
+export default function MicroStage({ round, playing, now, onSubmit, existing, label, waitingMessage = 'みんなを待っています', holdVerdict = false, missNote }: Props) {
   useTicker(100);
   const meta = microMeta(round.microId);
   const Game = MICRO_COMPONENTS[round.microId];
@@ -50,10 +52,12 @@ export default function MicroStage({ round, playing, now, onSubmit, existing, la
     const sec = Math.ceil((round.startAt - t) / 1000);
     return (
       <div className="micro-intro">
-        {label && <p className="micro-label">{label}</p>}
+        {label && <p className={`micro-label${label === 'SPEED UP!' ? ' speed' : ''}`}>{label}</p>}
         <p className="micro-title">{meta.title}</p>
         <p className="micro-hint">{meta.hint}</p>
-        <p className="micro-count">{sec}</p>
+        <p className="micro-count" aria-label={`あと${sec}秒`}>
+          {sec}
+        </p>
       </div>
     );
   }
@@ -89,11 +93,31 @@ export default function MicroStage({ round, playing, now, onSubmit, existing, la
       <p className="micro-title-sm">{meta.title}</p>
       <div className="micro-frozen">
         <Game key={round.seed} seed={round.seed} duration={playDuration.current.ms} onDone={done} />
-        {showVerdict && myResult && (
-          <div className={`micro-verdict ${myResult.success ? 'ok' : 'ng'}`}>
-            <span>{myResult.success ? 'クリア！' : 'ミス！'}</span>
-          </div>
-        )}
+        {showVerdict && myResult && <Verdict ok={myResult.success} note={myResult.success ? undefined : missNote} />}
+      </div>
+    </div>
+  );
+}
+
+// 判定のステッカー。成功は緑のギザギザの爆発に「○」、失敗は青いもくもくに「×」と、色・形・記号・文言の 4 つで区別する
+function Verdict({ ok, note }: { ok: boolean; note?: string }) {
+  return (
+    <div className={`micro-verdict ${ok ? 'ok' : 'ng'}`} role="status">
+      <div className="verdict-badge">
+        <svg className="verdict-burst" viewBox="0 0 270 170" aria-hidden focusable="false">
+          {ok ? (
+            <path d="M135 6 L156 34 L196 14 L198 50 L250 40 L230 72 L266 90 L226 106 L248 140 L198 132 L190 164 L156 140 L132 166 L112 138 L74 162 L72 128 L22 138 L44 104 L4 88 L42 70 L22 36 L72 46 L78 12 L112 34 Z" />
+          ) : (
+            <path d="M20 30 Q60 10 100 26 Q140 6 180 24 Q230 8 252 36 Q270 70 246 96 Q266 130 226 146 Q190 168 150 148 Q110 170 72 150 Q26 160 18 120 Q0 90 22 66 Q4 44 20 30Z" />
+          )}
+        </svg>
+        <span className="verdict-txt">
+          <span className="verdict-main">
+            <i aria-hidden>{ok ? '○' : '×'}</i>
+            {ok ? 'クリア！' : 'ミス！'}
+          </span>
+          {note && <small>{note}</small>}
+        </span>
       </div>
     </div>
   );

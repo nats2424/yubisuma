@@ -81,7 +81,7 @@ export default function DaifugoView({ state: s, me, players, send, now }: GameVi
       >
         {s.phase === 'play' && (
           <>
-            <div className="field">
+            <div className="table-field">
               {s.field ? (
                 <>
                   <div className="field-cards">

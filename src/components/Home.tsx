@@ -4,6 +4,9 @@ import { CATEGORIES, gamesIn } from '../games/registry';
 import { CATEGORY_INFO } from '../games/types';
 import { generateRoomCode, getSavedName, NAME_MAX, normalizeRoomCode, ROOM_CODE_LENGTH, saveName } from '../lib/identity';
 import { isOnlineMode } from '../lib/transport';
+import { MAX_ROOM_PLAYERS } from '../room/logic';
+import { TUNING } from '../games/micro/tuning';
+import GameIcon from './GameIcon';
 import { Brand, DemoBanner } from './Layout';
 
 export default function Home() {
@@ -50,9 +53,15 @@ export default function Home() {
           <h1>
             URLを送るだけで、
             <br />
-            すぐにみんなで。
+            <span className="mark">すぐにみんなで。</span>
           </h1>
           <p className="lead">登録不要・ダウンロード不要。スキマ時間にサクッと1〜5分、週末はじっくり何戦も。スマホでもPCでも。</p>
+          {/* 説明を読まなくても「すぐ遊べる」と伝わるよう、要点だけをステッカーで貼る */}
+          <ul className="stickers">
+            <li className="sticker">登録不要</li>
+            <li className="sticker">ダウンロード不要</li>
+            <li className="sticker">1〜{MAX_ROOM_PLAYERS}人</li>
+          </ul>
         </section>
 
         <section className="panel entry">
@@ -94,9 +103,15 @@ export default function Home() {
             </button>
           </form>
           {error && <p className="error">{error}</p>}
-          <p className="practice-link">
-            <a href="#/practice">ひとりでミニゲームに挑戦 →</a>
-          </p>
+          <a className="practice-card" href="#/practice">
+            <span>
+              ひとりでミニゲームに挑戦
+              <small>ライフ{TUNING.lives.default}つで、どこまで行ける？</small>
+            </span>
+            <span className="practice-arrow" aria-hidden>
+              →
+            </span>
+          </a>
         </section>
 
         {CATEGORIES.map((cat) => (
@@ -108,9 +123,7 @@ export default function Home() {
             <ul className="catalog-grid">
               {gamesIn(cat).map((g) => (
                 <li key={g.id} className="catalog-item">
-                  <span className="catalog-emoji" aria-hidden>
-                    {g.emoji}
-                  </span>
+                  <GameIcon id={g.id} emoji={g.emoji} size={52} />
                   <div>
                     <h3>{g.name}</h3>
                     <p>{g.tagline}</p>

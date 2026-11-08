@@ -25,9 +25,9 @@ export function Countdown({ until, now, label }: { until: number; now: () => num
 
 export const nameOf = (players: GamePlayer[], id: string) => players.find((p) => p.id === id)?.name ?? '???';
 
-export function Panel({ title, aside, children }: { title?: ReactNode; aside?: ReactNode; children: ReactNode }) {
+export function Panel({ title, aside, className, children }: { title?: ReactNode; aside?: ReactNode; className?: string; children: ReactNode }) {
   return (
-    <section className="panel">
+    <section className={className ? `panel ${className}` : 'panel'}>
       {(title || aside) && (
         <header className="panel-head">
           {title && <h2>{title}</h2>}

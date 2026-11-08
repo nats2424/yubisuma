@@ -7,6 +7,7 @@ import { isOnlineMode } from '../lib/transport';
 import { chatBlockedUntil, MAX_ROOM_PLAYERS, type RoomState } from '../room/logic';
 import { useRoom, type RoomHandle } from '../room/useRoom';
 import Chat from './Chat';
+import GameIcon, { ChatIcon } from './GameIcon';
 import ErrorBoundary, { CrashScreen, reloadPage } from './ErrorBoundary';
 import { Brand, DemoBanner } from './Layout';
 import { ConfirmButton, Panel } from './ui';
@@ -33,10 +34,12 @@ export default function Room({ code, create, onCreated }: Props) {
         <header className="topbar">
           <Brand />
         </header>
-        <main className="center">
-          <form className="panel entry" onSubmit={submit}>
-            <h2>
-              部屋 <span className="mono">{code}</span> に参加
+        {/* 招待 URL から来た人が最初に見る画面。「友達からの招待」「登録不要」を添えて、名前を入れるだけだと伝える */}
+        <main className="center join-wrap">
+          <form className="panel entry join-card" onSubmit={submit}>
+            <span className="invite">友達からの招待です</span>
+            <h2 className="join-title">
+              部屋<span className="code-chip">{code}</span>に参加
             </h2>
             <label className="field">
               <span className="label">ニックネーム</span>
@@ -45,6 +48,7 @@ export default function Room({ code, create, onCreated }: Props) {
             <button className="btn primary block" type="submit" disabled={!name.trim()}>
               参加する
             </button>
+            <p className="note">登録・インストールは不要です</p>
           </form>
         </main>
       </div>
@@ -76,6 +80,7 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
     case 'failed':
       return (
         <Message
+          mark="!"
           title={
             <>
               接続<wbr />
@@ -97,6 +102,7 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
     case 'notfound':
       return (
         <Message
+          mark="?"
           title={
             <>
               部屋 <span className="mono">{code}</span> が<wbr />
@@ -118,6 +124,7 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
     case 'full':
       return (
         <Message
+          mark="満"
           title={
             <>
               この部屋は満員です<wbr />
@@ -137,6 +144,7 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
       // 「もう一度参加する」（MVP-13, Should）は今回入れない。自分で退出したと誤解されないよう文言だけ分ける
       return (
         <Message
+          mark="!"
           title={
             <>
               ホストにより<wbr />
@@ -154,7 +162,7 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
       );
     case 'left':
       return (
-        <Message title="部屋を退出しました">
+        <Message mark="→" title="部屋を退出しました">
           <div className="row message-actions">
             <button className="btn primary" onClick={goHome}>
               トップへ
@@ -171,7 +179,7 @@ function RoomConnected({ code, create, name }: { code: string; create: boolean; 
 
 function Connecting({ code }: { code: string }) {
   return (
-    <Message title="接続中…">
+    <Message mark="…" title="接続中…">
       <p className="muted">
         部屋 <span className="mono">{code}</span> に入っています
       </p>
@@ -191,7 +199,8 @@ function ReconnectBanner() {
   );
 }
 
-function Message({ title, children }: { title: ReactNode; children?: ReactNode }) {
+// 状態ごとの記号ステッカー（「!」「?」「満」など）を見出しに添え、色だけに頼らず状況が分かるようにする
+function Message({ title, mark, children }: { title: ReactNode; mark?: string; children?: ReactNode }) {
   return (
     <div className="page">
       <header className="topbar">
@@ -199,6 +208,11 @@ function Message({ title, children }: { title: ReactNode; children?: ReactNode }
       </header>
       <main className="center">
         <div className="panel entry message">
+          {mark && (
+            <span className="message-mark" aria-hidden>
+              {mark}
+            </span>
+          )}
           <h2>{title}</h2>
           {children}
         </div>
@@ -282,7 +296,8 @@ function RoomScreen({ room, state }: { room: RoomHandle; state: RoomState }) {
             <ShareButton code={state.code} />
             {!wide && (
               <button className="btn small chat-toggle" onClick={() => setChatOpen(true)} aria-label="チャットを開く">
-                💬{unread > 0 && <span className="badge">{unread}</span>}
+                <ChatIcon />
+                {unread > 0 && <span className="badge">{unread}</span>}
               </button>
             )}
             <ConfirmButton className="btn small ghost" label="退出" confirmLabel="本当に退出" onConfirm={room.leave} />
@@ -348,7 +363,7 @@ function Members({
   onKick: (id: string) => void;
 }) {
   return (
-    <Panel title={`メンバー ${state.players.length}人`}>
+    <Panel className="members-panel" title={`メンバー ${state.players.length}人`}>
       <ul className="members">
         {state.players.map((p) => (
           <li key={p.id} className={online.has(p.id) ? '' : 'offline'}>
@@ -356,6 +371,8 @@ function Members({
             <span className="member-name">
               {p.name}
               {p.id === me && <span className="muted">（あなた）</span>}
+              {/* 点の塗り／点線だけでなく文言でもオフラインを示す */}
+              {!online.has(p.id) && <span className="muted">（オフライン）</span>}
             </span>
             {p.id === state.hostId && <span className="tag">ホスト</span>}
             {isHost && p.id !== me && !online.has(p.id) && (
@@ -420,8 +437,10 @@ function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
   const selected = findGame(state.selectedGame);
 
   return (
-    <div className="stack">
-      <Panel title="ゲームを選ぶ" aside={!isHost && <span className="pill">ホストが選びます</span>}>
+    // スマホでは「次に遊ぶゲーム → メンバー → ゲームを選ぶ」の順に並べる（CSS の order）。
+    // ゲストが最初に「これから何が始まるか」を見られるようにするため（design/README.md）
+    <div className="lobby">
+      <Panel className="picker-panel" title="ゲームを選ぶ" aside={!isHost && <span className="pill">ホストが選びます</span>}>
         {CATEGORIES.map((cat) => (
           <div key={cat} className="picker-group">
             <p className="picker-label">
@@ -436,9 +455,7 @@ function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
                   disabled={!isHost}
                   onClick={() => dispatch({ type: 'selectGame', gameId: g.id })}
                 >
-                  <span className="game-emoji" aria-hidden>
-                    {g.emoji}
-                  </span>
+                  <GameIcon id={g.id} emoji={g.emoji} size={34} />
                   <span className="game-name">{g.name}</span>
                   <span className="game-meta">
                     {g.minPlayers}〜{g.maxPlayers}人 · {g.minutes}
@@ -464,8 +481,14 @@ function SelectedGame({ room, state, selected }: { room: RoomHandle; state: Room
   const tooMany = count > selected.maxPlayers;
 
   return (
-    <Panel title={`${selected.emoji} ${selected.name}`}>
-      <p className="lead-sm">{selected.tagline}</p>
+    <Panel className="selected-panel" title="次に遊ぶゲーム" aside={!isHost && <span className="pill">ホストが選びます</span>}>
+      <div className="now-head">
+        <GameIcon id={selected.id} emoji={selected.emoji} size={56} />
+        <div>
+          <h3>{selected.name}</h3>
+          <p className="lead-sm">{selected.tagline}</p>
+        </div>
+      </div>
       <ol className="rules">
         {selected.rules.map((r) => (
           <li key={r}>{r}</li>
@@ -501,7 +524,14 @@ function SelectedGame({ room, state, selected }: { room: RoomHandle; state: Room
           {tooMany && <p className="hint">このゲームは{selected.maxPlayers}人までです。</p>}
         </>
       ) : (
-        <p className="notice">ホストがゲームを開始するのを待っています…</p>
+        <p className="notice waiting">
+          <span className="dots" aria-hidden>
+            <i />
+            <i />
+            <i />
+          </span>
+          ホストがゲームを開始するのを待っています…
+        </p>
       )}
     </Panel>
   );
@@ -522,7 +552,8 @@ function GameArea({ room, state }: { room: RoomHandle; state: RoomState }) {
     <div className="stack">
       <div className="game-header">
         <h1>
-          <span aria-hidden>{def.emoji}</span> {def.name}
+          <GameIcon id={def.id} emoji={def.emoji} size={36} />
+          {def.name}
         </h1>
         <div className="row">
           <button className="btn small ghost" onClick={() => setShowRules((v) => !v)}>
