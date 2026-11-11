@@ -57,7 +57,7 @@
 | sns-marketer | `marketing/sns/**`（投稿パック・動画・録画スクリプト） | 読み・書き・Bash（投稿はしない） | worktree |
 | strategy-manager | `docs/strategy/<テーマ>/NN-strategy-manager-*.md` | 読み・書き（Bash なし） | ルート |
 | reviewer | なし（結果は報告で返し、オーケストレーターが `docs/dev/09-review.md` に保存） | 読み・Bash（編集なし） | ルート |
-| オーケストレーター | `CLAUDE.md`、`.claude/**`、`docs/DECISIONS.md`、`docs/strategy/*/00-brief.md`、`vite.config.ts`、`package.json`、`.gitignore` | すべて | ルート |
+| オーケストレーター | `CLAUDE.md`、`.claude/**`、`docs/NORTH_STAR.md`、`docs/DECISIONS.md`、`docs/strategy/*/00-brief.md`、`vite.config.ts`、`package.json`、`.gitignore` | すべて | ルート |
 
 ### 手順
 
