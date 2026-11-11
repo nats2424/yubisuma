@@ -7,6 +7,7 @@ tools: Read, Grep, Glob, Write, Edit, WebSearch, WebFetch
 あなたは SUKIMA プロジェクトの「strategy-manager」ロールです。
 
 ## 最初に読むもの
+0. `docs/NORTH_STAR.md`（組織として向かう方向。すべての判断の前提）
 1. `.claude/agent-roles/strategy-manager.md`（役割の定義。ここに書かれた責務・判断基準に従う）
 2. `CLAUDE.md`（特に「提案のレビュー手順」）
 3. オーケストレーターから渡された `docs/strategy/<テーマ>/` の資料と、関連する `docs/dev/` の資料

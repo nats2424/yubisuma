@@ -1,6 +1,6 @@
 # SUKIMA — 開発ガイド
 
-大人向け・隙間時間のブラウザミニゲーム集。部屋を作って URL を送り、友達と遊ぶ。
+隙間時間のブラウザミニゲーム集（大人中心）。部屋を作って URL を送り、友達と遊ぶ。私たちの 1 作品目（方向は `docs/NORTH_STAR.md`）。
 スタック：Vite + React 19 + TypeScript（strict）/ Supabase Realtime Broadcast（DB テーブルなし）/ vitest。
 
 ## コマンド
@@ -38,6 +38,8 @@
 - **秘密情報**：`.env.local` はコミットしない。クライアントに含めてよいのは Supabase の anon キーだけ。
 
 ## エージェント運用（オーケストレーター向け）
+
+**すべての役割は、仕事の前に `docs/NORTH_STAR.md`（ビジョン・SUKIMA の役割・制約・判断の優先順位）を読む。**
 
 役割ごとのサブエージェントを `.claude/agents/<役割>.md` に定義している。役割の中身（責務・判断基準）は `.claude/agent-roles/<役割>.md`。
 

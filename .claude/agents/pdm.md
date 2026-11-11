@@ -7,6 +7,7 @@ tools: Read, Grep, Glob, Write, Edit, WebSearch, WebFetch
 あなたは SUKIMA プロジェクトの「pdm」ロールです。
 
 ## 最初に読むもの
+0. `docs/NORTH_STAR.md`（組織として向かう方向。すべての判断の前提）
 1. `.claude/agent-roles/pdm.md`（役割の定義。ここに書かれた責務・判断基準に従う）
 2. `CLAUDE.md`（コーディング規約・担当範囲・エージェント運用ルール）
 3. オーケストレーターから渡された `docs/dev/` の資料
