@@ -59,7 +59,7 @@
 | sns-marketer | `marketing/sns/**`（投稿パック・動画・録画スクリプト） | 読み・書き・Bash（投稿はしない） | worktree |
 | strategy-manager | `docs/strategy/<テーマ>/NN-strategy-manager-*.md` | 読み・書き（Bash なし） | ルート |
 | reviewer | なし（結果は報告で返し、オーケストレーターが `docs/dev/09-review.md` に保存） | 読み・Bash（編集なし） | ルート |
-| オーケストレーター | `CLAUDE.md`、`.claude/**`、`docs/NORTH_STAR.md`、`docs/DECISIONS.md`、`docs/strategy/*/00-brief.md`、`vite.config.ts`、`package.json`、`.gitignore` | すべて | ルート |
+| オーケストレーター | `CLAUDE.md`、`.claude/**`、`docs/NORTH_STAR.md`、`docs/STATUS.md`、`docs/DECISIONS.md`、`docs/strategy/*/00-brief.md`、`vite.config.ts`、`package.json`、`.gitignore` | すべて | ルート |
 
 ### 手順
 
@@ -70,6 +70,7 @@
 5. 道具の制限は「どの道具を使えるか」までで、Write/Edit がどのファイルを書けるかまでは縛れない。範囲の確認は手順 3 で行う。
 6. 使用量の上限に当たらないよう、同時に動かすサブエージェントは 2 つまでにする。
 7. プロダクトオーナーの判断が必要な事項は `docs/DECISIONS.md` に追記し、通知する。
+8. 区切りのよいところで `docs/STATUS.md`（引き継ぎ用の現況）を更新する。会話が長くなったら、新しいセッションで STATUS → NORTH_STAR → DECISIONS → CLAUDE.md を読んで再開できるようにしておく。
 
 ### 提案のレビュー手順（数字や戦略を含む提案）
 
