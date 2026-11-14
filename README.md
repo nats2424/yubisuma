@@ -48,8 +48,9 @@ Supabase を設定しない場合は**デモモード**になり、同じブラ�
 
 通信には Supabase Realtime の Broadcast 機能だけを使います。**テーブル作成やSQLは不要**です。
 
-1. [Supabase](https://supabase.com/) で無料プロジェクトを作成
-2. Project Settings → API から `Project URL` と `anon public` キーをコピー
+1. [Supabase](https://supabase.com/) で無料プロジェクトを作成（Region は Northeast Asia (Tokyo)）
+2. Project Settings → API Keys の **Legacy API Keys** タブにある `anon` `public` キー（`eyJ` で始まる）と、`Project URL` をコピー
+   - 新しい形式のキー（`sb_publishable_` で始まる）にはまだ対応していません
 3. `.env.example` を `.env.local` にコピーして値を設定
 
 ```
@@ -57,29 +58,32 @@ VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
-※ Realtime の設定で「Private channels only（公開チャンネルを禁止）」を有効にしている場合は無効にしてください。
+※ Realtime の Settings で「Allow public access」（公開チャンネルの許可）は**オンのまま**にしてください。SUKIMA は公開チャンネルを使います。
 
 ## 公開（デプロイ）
 
-`npm run build` で出力される `dist/` は静的ファイルだけなので、Vercel / Netlify / Cloudflare Pages / GitHub Pages などにそのまま置けます。サーバー側のプログラムやデータベースは不要です。
+`npm run build` で出力される `dist/` は静的ファイルだけなので、静的サイトのホスティングにそのまま置けます。サーバー側のプログラムやデータベースは不要です。
 
-### Vercel で公開する（おすすめ）
+### Cloudflare Pages で公開する（おすすめ）
 
-1. Vercel で「Add New → Project」から、このリポジトリを連携（Import）する
-2. ビルドの設定を次のようにする
-   - Framework Preset：`Vite`
-   - Build Command：`npm run build`
-   - Output Directory：`dist`
-3. 「Environment Variables」に次の 2 つを、**Production と Preview の両方**に設定する
+詳しい手順（画面ごとの操作・確認方法）は [`docs/dev/11-launch-guide.md`](docs/dev/11-launch-guide.md) の §2 にあります。要点は次のとおりです。
+
+1. Cloudflare のダッシュボードで「Workers & Pages」から **Pages** を選び、このリポジトリを連携する（**Workers と間違えない**。Workers を選ぶと設定項目が違い、静的サイトとして公開されません）
+2. ビルドの設定
+   - ビルドコマンド：`npm run build`
+   - ビルド出力ディレクトリ：`dist`
+3. 環境変数（Production と Preview の両方に設定）
    - `VITE_SUPABASE_URL`（例：`https://xxxx.supabase.co`）
-   - `VITE_SUPABASE_ANON_KEY`（Supabase の `anon public` キー）
-4. Deploy する
+   - `VITE_SUPABASE_ANON_KEY`（Legacy API Keys の `anon` キー。`eyJ` で始まる）
+   - `NODE_VERSION`：`22`
+4. 保存してデプロイする
 
 - 環境変数は**ビルド時に埋め込まれます**（Vite の仕様）。値を追加・変更したら、必ず再デプロイしてください。
 - 入れ忘れるとデモモードのままになり、トップに「デモモード」の帯が出ます。公開後にトップを開いて、帯が出ていないことを確認してください。
-- URL はハッシュ形式（`#/r/ABCD`）なので、リライト設定（`vercel.json`）は不要です。ルートで公開するので `VITE_BASE` は設定しません。
-- Supabase 側では、Realtime の設定「Private channels only（公開チャンネルを禁止）」を**無効**にしておきます（公開チャンネルを使うため）。テーブル作成や SQL は不要です。
-- クライアントに含めてよいのは anon キーだけです。`service_role` キーは絶対に設定しないでください。
+- URL はハッシュ形式（`#/r/ABCD`）なので、リライト（転送）の設定は不要です。ルートで公開するので `VITE_BASE` は設定しません。
+- Supabase 側では、Realtime の Settings で「Allow public access」をオンのままにしておきます。テーブル作成や SQL は不要です。
+- クライアントに含めてよいのは anon キーだけです。`service_role` キーや `sb_secret_` で始まるキーは絶対に設定しないでください。
+- 共有したときのプレビュー（OGP）は `index.html` に書いてあり、画像は `public/ogp.png`（1200×630）を使います。公開アドレスを変えたら `og:url`・`og:image` も直してください。
 
 ### サブパスで公開する（GitHub Pages など）
 

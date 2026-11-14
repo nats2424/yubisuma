@@ -43,6 +43,7 @@ export const GAME_LIST: GameDef[] = [
     init: wordwolf.init,
     reduce: wordwolf.reduce,
     schedule: wordwolf.schedule,
+    isOver: wordwolf.isOver,
     View: WordWolfView,
   },
   {
@@ -73,6 +74,7 @@ export const GAME_LIST: GameDef[] = [
     init: majority.init,
     reduce: majority.reduce,
     schedule: majority.schedule,
+    isOver: majority.isOver,
     View: MajorityView,
   },
   {
@@ -92,6 +94,7 @@ export const GAME_LIST: GameDef[] = [
     init: reaction.init,
     reduce: reaction.reduce,
     schedule: reaction.schedule,
+    isOver: reaction.isOver,
     View: ReactionView,
   },
   {
@@ -120,6 +123,7 @@ export const GAME_LIST: GameDef[] = [
     init: rush.init,
     reduce: rush.reduce,
     schedule: rush.schedule,
+    isOver: rush.isOver,
     View: RushView,
   },
   {
@@ -139,6 +143,7 @@ export const GAME_LIST: GameDef[] = [
     init: yubisuma.init,
     reduce: yubisuma.reduce,
     schedule: yubisuma.schedule,
+    isOver: yubisuma.isOver,
     View: YubisumaView,
   },
   {
@@ -172,6 +177,7 @@ export const GAME_LIST: GameDef[] = [
     init: daifugo.init,
     reduce: daifugo.reduce,
     schedule: daifugo.schedule,
+    isOver: daifugo.isOver,
     View: DaifugoView,
   },
 ];

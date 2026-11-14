@@ -57,6 +57,8 @@ export interface GameDef<S = any, A = any> {
   // by はプレイヤーID。タイマー由来のアクションは 'system'
   reduce: (state: S, action: A, by: string, now: number) => S;
   schedule?: (state: S) => Scheduled<A>;
+  // ゲームが終わった（最終結果を出す）状態か。純粋関数。ラウンド途中の結果表示は false
+  isOver?: (state: S) => boolean;
   View: ComponentType<GameViewProps<S, A>>;
 }
 

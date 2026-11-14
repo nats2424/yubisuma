@@ -104,3 +104,6 @@ export const schedule = (s: RushState): Scheduled<RushAction> => {
   if (s.phase === 'result') return { at: s.until, action: { type: 'next' } };
   return null;
 };
+
+// 終了判定（結果画面・共有の表示に使う）。'result' はラウンドごとの結果で、まだ続く
+export const isOver = (s: RushState): boolean => s.phase === 'over';

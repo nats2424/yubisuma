@@ -301,3 +301,6 @@ export const schedule = (s: DaifugoState): Scheduled<DaifugoAction> => {
   if (s.phase === 'play' || s.phase === 'exchange') return { at: s.deadline, action: { type: 'timeout', seq: s.seq } };
   return null;
 };
+
+// 終了判定（結果画面・共有の表示に使う）。'roundEnd' はラウンドの区切りで、まだ続く
+export const isOver = (s: DaifugoState): boolean => s.phase === 'over';

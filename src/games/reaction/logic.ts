@@ -75,3 +75,6 @@ export const reduce = (s: ReactionState, a: ReactionAction, by: string, now: num
 
 export const schedule = (s: ReactionState): Scheduled<ReactionAction> =>
   s.phase === 'over' ? null : { at: s.until, action: { type: 'advance' } };
+
+// 終了判定（結果画面・共有の表示に使う）。'result' はラウンドごとの結果で、まだ続く
+export const isOver = (s: ReactionState): boolean => s.phase === 'over';

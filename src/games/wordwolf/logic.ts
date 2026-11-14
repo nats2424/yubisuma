@@ -73,3 +73,6 @@ export const reduce = (s: WordWolfState, a: WordWolfAction, by: string, now: num
 
 export const schedule = (s: WordWolfState): Scheduled<WordWolfAction> =>
   s.phase === 'talk' ? { at: s.talkEndsAt, action: { type: 'toVote' } } : null;
+
+// 終了判定（結果画面・共有の表示に使う）。'result' は投票結果＝ゲームの終わり
+export const isOver = (s: WordWolfState): boolean => s.phase === 'result';

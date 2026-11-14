@@ -1,6 +1,6 @@
 # SUKIMA — 開発ガイド
 
-大人向け・隙間時間のブラウザミニゲーム集。部屋を作って URL を送り、友達と遊ぶ。
+隙間時間のブラウザミニゲーム集（大人中心）。部屋を作って URL を送り、友達と遊ぶ。私たちの 1 作品目（方向は `docs/NORTH_STAR.md`）。
 スタック：Vite + React 19 + TypeScript（strict）/ Supabase Realtime Broadcast（DB テーブルなし）/ vitest。
 
 ## コマンド
@@ -39,6 +39,8 @@
 
 ## エージェント運用（オーケストレーター向け）
 
+**すべての役割は、仕事の前に `docs/NORTH_STAR.md`（ビジョン・SUKIMA の役割・制約・判断の優先順位）を読む。**
+
 役割ごとのサブエージェントを `.claude/agents/<役割>.md` に定義している。役割の中身（責務・判断基準）は `.claude/agent-roles/<役割>.md`。
 
 ### 担当範囲と道具
@@ -50,20 +52,36 @@
 | qa | `src/__tests__/qa-*.test.ts`、`docs/dev/04-qa-report.md` | 読み・書き・Bash | worktree |
 | security | `src/__tests__/security-*.test.ts`、`docs/dev/05-security-report.md` | 読み・書き・Bash | worktree |
 | designer | `design/**`（`design/implemented/` を除く） | 読み・書き・Bash | worktree |
-| pdm | `docs/dev/01`・`06`・`07`・`08` | 読み・書き（Bash なし） | ルート |
-| cto | `docs/dev/02-architecture.md`（`src/room/types.ts` の変更承認） | 読み・書き（Bash なし） | ルート |
-| pjm | `docs/dev/03-wbs.md` | 読み・書き（Bash なし） | ルート |
-| marketing | `docs/dev/10-marketing-monetization.md` | 読み・書き（Bash なし） | ルート |
+| pdm | `docs/dev/01`・`06`・`07`・`08`、`docs/strategy/<テーマ>/NN-pdm-*.md` | 読み・書き（Bash なし） | ルート |
+| cto | `docs/dev/02-architecture.md`、`docs/dev/11-launch-guide.md`（公開の手順書）、`docs/strategy/<テーマ>/NN-cto-*.md`（`src/room/types.ts` の変更承認） | 読み・書き（Bash なし） | ルート |
+| pjm | `docs/dev/03-wbs.md`、`docs/strategy/<テーマ>/NN-pjm-*.md` | 読み・書き（Bash なし） | ルート |
+| marketing | `docs/dev/10-marketing-monetization.md`、`docs/strategy/<テーマ>/NN-marketing-*.md` | 読み・書き（Bash なし） | ルート |
 | sns-marketer | `marketing/sns/**`（投稿パック・動画・録画スクリプト） | 読み・書き・Bash（投稿はしない） | worktree |
+| strategy-manager | `docs/strategy/<テーマ>/NN-strategy-manager-*.md` | 読み・書き（Bash なし） | ルート |
 | reviewer | なし（結果は報告で返し、オーケストレーターが `docs/dev/09-review.md` に保存） | 読み・Bash（編集なし） | ルート |
-| オーケストレーター | `CLAUDE.md`、`.claude/**`、`docs/DECISIONS.md`、`vite.config.ts`、`package.json`、`.gitignore` | すべて | ルート |
+| オーケストレーター | `CLAUDE.md`、`.claude/**`、`docs/NORTH_STAR.md`、`docs/STATUS.md`、`docs/DECISIONS.md`、`docs/strategy/*/00-brief.md`、`vite.config.ts`、`package.json`、`.gitignore` | すべて | ルート |
 
 ### 手順
 
 1. **コードを書く役割（backend・client・qa・security・designer・sns-marketer）は、1 人で動かすときも必ず `isolation: worktree` で起動する。** メインの作業フォルダで直接編集させない。
-2. 資料だけを書く役割（pdm・cto・pjm・marketing）と reviewer はルートで動かしてよい。
+2. 資料だけを書く役割（pdm・cto・pjm・marketing・strategy-manager）と reviewer はルートで動かしてよい。
 3. マージの前に担当範囲を確認する：`python3 .claude/scripts/check-scope.py <役割> <base>..<worktree のブランチ>`。範囲外の変更があれば、理由を確かめてから取り込むか差し戻す。
 4. マージ後に `npm run typecheck`・`npm test`・`npm run build` を通してから push し、worktree とブランチを消す。
 5. 道具の制限は「どの道具を使えるか」までで、Write/Edit がどのファイルを書けるかまでは縛れない。範囲の確認は手順 3 で行う。
 6. 使用量の上限に当たらないよう、同時に動かすサブエージェントは 2 つまでにする。
 7. プロダクトオーナーの判断が必要な事項は `docs/DECISIONS.md` に追記し、通知する。
+8. 区切りのよいところで `docs/STATUS.md`（引き継ぎ用の現況）を更新する。会話が長くなったら、新しいセッションで STATUS → NORTH_STAR → DECISIONS → CLAUDE.md を読んで再開できるようにしておく。
+
+### 提案のレビュー手順（数字や戦略を含む提案）
+
+収益目標・価格・KPI・公開判断など、数字や戦略を含む提案は、オーケストレーターが 1 人で答えず、次の流れを通してからプロダクトオーナーに出す。資料は `docs/strategy/<テーマ>/` に番号順に置く。
+
+1. `00-brief.md`：オーケストレーターが、問い・前提・PO の発言・制約を書く
+2. `01-<担当>-draft.md`：担当の役割がたたき台を書く（例：収益なら marketing）
+3. `02-<役割>-review.md`：関係する役割がそれぞれの立場でレビューする（費用は cto、PMF との整合は pdm など。同時に 2 つまで）
+4. `03-strategy-manager-critique.md`：戦略マネージャーが、たたき台とレビューをまとめて批評する
+5. `04-<担当>-revised.md`：担当の役割が指摘を受けて直す（必要なら 3〜4 をもう 1 往復）
+6. `05-strategy-manager-final.md`：戦略マネージャーが最終案・幅・確度・残った論点・PO 判断事項をまとめる
+7. オーケストレーターが確認してプロダクトオーナーに出し、判断事項を `docs/DECISIONS.md` に追記する
+
+使用量が増えるので、対象は重要な提案に絞る。軽い質問はオーケストレーターが答えてよいが、その場合は「レビューを通していない」と明記する。

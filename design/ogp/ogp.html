@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>SUKIMA OGP 画像（1200×630）</title>
+<!--
+  OGP 画像の元ファイル（J-01）。design/ogp/render.mjs で 1200×630・deviceScaleFactor 1 で撮る。
+  正方形に切り抜かれても成立するよう、ロゴ・コピー・特徴チップは中央 630×630（x=285〜915）に収め、
+  左右の飾り（通話中のスマホ・吹き出し・ステッカー）は切れても主旨が欠けないものだけにする。
+  トークンは案B「ポップ・ステッカー」（src/styles.css）のライト配色。小さいプレビューでも明るく目立つため。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Noto+Sans+JP:wght@700;900&display=block" rel="stylesheet">
+<style>
+:root {
+  --bg: #fff4e0;
+  --surface: #ffffff;
+  --line: #1c1a17;
+  --text: #1c1a17;
+  --accent: #ff5b3a;
+  --yellow: #ffd23f;
+  --blue: #4a74f5;
+  --green: #1f9d57;
+  --pink: #ff9cc2;
+  --teal: #2bb3a3;
+  --purple: #9b7bf0;
+  --font-body: 'Noto Sans JP', sans-serif;
+  --font-pop: 'Dela Gothic One', 'Noto Sans JP', sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { width: 1200px; height: 630px; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+.canvas { position: relative; width: 1200px; height: 630px; overflow: hidden;
+  /* 背景の水玉。ステッカーを貼る台紙の雰囲気 */
+  background-image: radial-gradient(circle, rgba(28,26,23,0.09) 2.5px, transparent 3px);
+  background-size: 28px 28px; }
+svg { display: block; }
+.ln { stroke: var(--line); stroke-width: 5; stroke-linejoin: round; stroke-linecap: round; }
+
+/* 中央 630×630 の安全域 */
+.safe { position: absolute; left: 285px; top: 0; width: 630px; height: 630px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; }
+
+.logo { display: inline-block; font-family: var(--font-pop); font-size: 78px; line-height: 1; letter-spacing: 0.06em;
+  color: #fff; background: var(--accent); padding: 18px 28px 22px; border: 6px solid var(--line); border-radius: 30px;
+  transform: rotate(-3deg); box-shadow: 9px 9px 0 var(--line); -webkit-text-stroke: 3.5px var(--line); paint-order: stroke fill;
+  overflow: hidden; white-space: nowrap; }
+.logo .slit { display: inline-block; width: 20px; height: 1.6em; margin: -0.4em 5px -0.4em 8px; vertical-align: middle;
+  background: var(--bg); border-left: 5px solid var(--line); border-right: 5px solid var(--line); transform: rotate(14deg); }
+
+.copy { margin: 0; text-align: center; font-weight: 900; line-height: 1.22; font-size: 62px; letter-spacing: 0.01em; }
+.copy .mark { background: linear-gradient(transparent 58%, var(--yellow) 58%, var(--yellow) 92%, transparent 92%); padding: 0 4px; }
+
+.chips { display: flex; gap: 10px; }
+.chip { font-weight: 900; font-size: 26px; line-height: 1; padding: 12px 18px 14px; background: var(--surface);
+  border: 5px solid var(--line); border-radius: 999px; box-shadow: 5px 5px 0 var(--line); white-space: nowrap; }
+.chip.y { background: var(--yellow); }
+.chip.p { background: var(--pink); }
+.chip.t { background: var(--teal); }
+
+/* 左右の飾り（正方形に切られたら見えなくてよい） */
+.deco { position: absolute; }
+.bubble { position: absolute; font-weight: 900; font-size: 28px; line-height: 1; padding: 12px 18px 14px; background: var(--surface);
+  border: 5px solid var(--line); border-radius: 22px; box-shadow: 5px 5px 0 var(--line); white-space: nowrap; }
+.solo { position: absolute; font-family: var(--font-pop); font-size: 30px; line-height: 1.15; text-align: center; color: var(--text);
+  background: var(--yellow); border: 6px solid var(--line); border-radius: 50%; width: 200px; height: 200px;
+  display: flex; align-items: center; justify-content: center; box-shadow: 7px 7px 0 var(--line); }
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <!-- 左：通話中のスマホ（それぞれの家から通話しながら） -->
+  <div class="deco" style="left:44px; top:118px; transform: rotate(-8deg);">
+    <svg width="190" height="330" viewBox="0 0 190 330">
+      <rect x="17" y="17" width="164" height="304" rx="30" fill="#1c1a17" />
+      <rect x="8" y="8" width="164" height="304" rx="30" fill="#fff" class="ln" />
+      <rect x="26" y="40" width="128" height="230" rx="12" fill="#4a74f5" class="ln" />
+      <!-- 通話中の 3 人 -->
+      <circle cx="62" cy="96" r="22" fill="#ffd23f" class="ln" />
+      <circle cx="118" cy="96" r="22" fill="#ff9cc2" class="ln" />
+      <circle cx="90" cy="160" r="22" fill="#2bb3a3" class="ln" />
+      <!-- 通話ボタン -->
+      <circle cx="90" cy="230" r="22" fill="#1f9d57" class="ln" />
+      <path d="M81 221 q3 -4 7 0 l3 5 q1 3 -2 5 q2 5 7 7 q2 -3 5 -2 l5 3 q4 4 0 7 q-8 5 -17 -5 q-11 -11 -8 -20z" fill="#fff" stroke="#1c1a17" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="70" y="286" width="40" height="8" rx="4" fill="#1c1a17" />
+    </svg>
+  </div>
+  <div class="bubble" style="left:84px; top:48px; transform: rotate(5deg); background: var(--yellow);">何かやる？</div>
+  <div class="bubble" style="left:30px; top:486px; transform: rotate(-4deg);">通話はそのまま</div>
+
+  <!-- 右上：隙間時間（ひとり用は中央のチップに入れたので、切れても困らない言葉にする） -->
+  <div class="solo" style="left:966px; top:70px; transform: rotate(9deg);">スキマ<br>時間に<br>サクッと</div>
+  <!-- 右下：ミニゲームのステッカー（星・ハート・稲妻） -->
+  <div class="deco" style="left:950px; top:330px;">
+    <svg width="240" height="260" viewBox="0 0 240 260">
+      <g transform="rotate(-12 70 70)">
+        <path d="M70 12 l17 36 39 5 -29 27 8 39 -35 -19 -35 19 8 -39 -29 -27 39 -5z" fill="#ff5b3a" class="ln"/>
+      </g>
+      <g transform="translate(122 100) rotate(10)">
+        <path d="M44 86 C10 62 0 44 4 28 C8 10 30 4 44 22 C58 4 80 10 84 28 C88 44 78 62 44 86z" fill="#ff9cc2" class="ln"/>
+      </g>
+      <g transform="translate(30 150) rotate(-6)">
+        <path d="M44 0 L8 48 h26 l-12 40 44 -54 h-26 l14 -34z" fill="#9b7bf0" class="ln"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="safe">
+    <span class="logo">SUKI<i class="slit"></i>MA</span>
+    <p class="copy">通話しながら<br><span class="mark">みんなでミニゲーム</span></p>
+    <div class="chips">
+      <span class="chip p">URLをタップ</span>
+      <span class="chip y">登録なし</span>
+      <span class="chip t">ひとりでもOK</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>
