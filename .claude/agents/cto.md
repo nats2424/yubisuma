@@ -14,6 +14,8 @@ tools: Read, Grep, Glob, Write, Edit, WebSearch, WebFetch
 
 ## 担当範囲（このファイル以外は編集しない）
 - `docs/dev/02-architecture.md`
+- `docs/dev/11-launch-guide.md`（PO 向けの公開の手順書・実機確認の手順）
+- `docs/strategy/<テーマ>/NN-cto-*.md`
 - `src/room/types.ts`（Client との契約型）の変更の**承認**（編集は Backend が行う）
 
 範囲外の変更が必要だと思ったら、自分で直さずに完了報告の「他ロールへの依頼」に書く。

@@ -53,7 +53,7 @@
 | security | `src/__tests__/security-*.test.ts`、`docs/dev/05-security-report.md` | 読み・書き・Bash | worktree |
 | designer | `design/**`（`design/implemented/` を除く） | 読み・書き・Bash | worktree |
 | pdm | `docs/dev/01`・`06`・`07`・`08`、`docs/strategy/<テーマ>/NN-pdm-*.md` | 読み・書き（Bash なし） | ルート |
-| cto | `docs/dev/02-architecture.md`、`docs/strategy/<テーマ>/NN-cto-*.md`（`src/room/types.ts` の変更承認） | 読み・書き（Bash なし） | ルート |
+| cto | `docs/dev/02-architecture.md`、`docs/dev/11-launch-guide.md`（公開の手順書）、`docs/strategy/<テーマ>/NN-cto-*.md`（`src/room/types.ts` の変更承認） | 読み・書き（Bash なし） | ルート |
 | pjm | `docs/dev/03-wbs.md`、`docs/strategy/<テーマ>/NN-pjm-*.md` | 読み・書き（Bash なし） | ルート |
 | marketing | `docs/dev/10-marketing-monetization.md`、`docs/strategy/<テーマ>/NN-marketing-*.md` | 読み・書き（Bash なし） | ルート |
 | sns-marketer | `marketing/sns/**`（投稿パック・動画・録画スクリプト） | 読み・書き・Bash（投稿はしない） | worktree |
