@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { MICRO_META, microMeta, nextMicroId, startMicroRound, type MicroResult, type MicroRound } from '../games/micro/core';
 import Hearts from '../games/micro/Hearts';
 import MicroStage from '../games/micro/MicroStage';
 import StageTrack from '../games/micro/StageTrack';
 import { speedForStage, speedUpRuleText, TUNING } from '../games/micro/tuning';
+import { goRoom } from '../App';
+import { generateRoomCode, getSavedName, NAME_MAX, saveName } from '../lib/identity';
 import { Brand } from './Layout';
+import { practiceUrl, recordText, shareOrCopy } from './share';
 import { Panel } from './ui';
 
 const now = () => Date.now();
@@ -123,6 +126,7 @@ export default function Practice() {
             戻る
           </button>
         </div>
+        <OverExtras cleared={mode.cleared} />
       </div>
     );
   } else if (mode.kind === 'single') {
@@ -187,6 +191,68 @@ export default function Practice() {
         </a>
       </header>
       <main className="practice-main">{body}</main>
+    </div>
+  );
+}
+
+// ゲームオーバー画面の「広める」導線：記録の共有（J-05）と、ラッシュで友達と勝負する部屋作り（J-06）
+function OverExtras({ cleared }: { cleared: number }) {
+  const [note, setNote] = useState('');
+  // 名前が保存されていなければ、部屋を作る前に名前だけ聞く（トップに戻らずに済むように）
+  const [asking, setAsking] = useState(false);
+  const [name, setName] = useState(getSavedName);
+
+  const shareRecord = async () => {
+    const r = await shareOrCopy({ title: 'SUKIMA', text: recordText(cleared), url: practiceUrl() });
+    if (r === 'copied') setNote('記録をコピーしました。LINEなどに貼り付けてください');
+    else if (r === 'failed') setNote(`コピーできませんでした：${practiceUrl()}`);
+  };
+
+  const createRoom = () => goRoom(generateRoomCode(), true, 'rush');
+  const versus = () => {
+    if (getSavedName().trim()) createRoom();
+    else setAsking(true);
+  };
+  const submitName = (e: FormEvent) => {
+    e.preventDefault();
+    const n = name.trim();
+    if (!n) return;
+    saveName(n);
+    createRoom();
+  };
+
+  return (
+    <div className="over-extras">
+      {asking ? (
+        <form className="panel entry versus-name" onSubmit={submitName}>
+          <label className="field">
+            <span className="label">ニックネーム</span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={NAME_MAX}
+              placeholder={`${NAME_MAX}文字まで`}
+              autoComplete="nickname"
+              autoFocus
+            />
+          </label>
+          <button className="btn primary block" type="submit" disabled={!name.trim()}>
+            ラッシュの部屋を作る
+          </button>
+        </form>
+      ) : (
+        // 「もう一度」が主ボタンなので、ここは白いボタンにして主従を分ける
+        <button className="btn block" onClick={versus}>
+          友達と勝負する
+          <small className="btn-sub">ミニゲームラッシュで</small>
+        </button>
+      )}
+      <button className="btn block" onClick={shareRecord}>
+        記録を共有
+      </button>
+      <p className="invite-note" role="status" aria-live="polite">
+        {note}
+      </p>
     </div>
   );
 }

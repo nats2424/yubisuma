@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { goHome, goRoom } from '../App';
 import { CATEGORIES, GAMES, gamesIn } from '../games/registry';
 import { CATEGORY_INFO, resolveOptions, type GameDef } from '../games/types';
@@ -10,11 +10,12 @@ import Chat from './Chat';
 import GameIcon, { ChatIcon } from './GameIcon';
 import ErrorBoundary, { CrashScreen, reloadPage } from './ErrorBoundary';
 import { Brand, DemoBanner } from './Layout';
+import { roomUrl, inviteText, shareOrCopy, copyText, canWebShare } from './share';
 import { ConfirmButton, Panel } from './ui';
 
-type Props = { code: string; create: boolean; onCreated: () => void };
+type Props = { code: string; create: boolean; initialGame?: string; onCreated: () => void };
 
-export default function Room({ code, create, onCreated }: Props) {
+export default function Room({ code, create, initialGame, onCreated }: Props) {
   const [name, setName] = useState(getSavedName);
   const [confirmed, setConfirmed] = useState(() => Boolean(getSavedName()));
 
@@ -55,13 +56,22 @@ export default function Room({ code, create, onCreated }: Props) {
     );
   }
 
-  return <RoomConnected code={code} create={create} name={name.trim()} />;
+  return <RoomConnected code={code} create={create} initialGame={initialGame} name={name.trim()} />;
 }
 
-function RoomConnected({ code, create, name }: { code: string; create: boolean; name: string }) {
+function RoomConnected({ code, create, initialGame, name }: { code: string; create: boolean; initialGame?: string; name: string }) {
   const [me] = useState(getPlayerId);
   const room = useRoom(code, me, name, create);
   const { status, state } = room;
+  // 作成時に指定されたゲームを、部屋ができた直後に 1 回だけ選ぶ（J-06）。
+  // useRoom の既定ゲームは固定なので、ホストの通常の「ゲームを選ぶ」操作で切り替える
+  const pendingGame = useRef(create ? initialGame : undefined);
+  useEffect(() => {
+    const g = pendingGame.current;
+    if (!g || status !== 'ready' || !state || !room.isHost) return;
+    pendingGame.current = undefined;
+    if (!state.game && state.selectedGame !== g && findGame(g)) room.dispatch({ type: 'selectGame', gameId: g });
+  }, [status, state, room]);
 
   // RoomStatus の全値をここで出し分ける。値が増えたら default の never で型エラーになり、分岐の漏れに気づける
   switch (status) {
@@ -221,26 +231,16 @@ function Message({ title, mark, children }: { title: ReactNode; mark?: string; c
   );
 }
 
-function ShareButton({ code }: { code: string }) {
+function ShareButton({ code, gameName }: { code: string; gameName: string | undefined }) {
   const [copied, setCopied] = useState(false);
   const [shown, setShown] = useState<string | null>(null);
-  const url = `${location.origin}${location.pathname}#/r/${code}`;
+  const url = roomUrl(code);
   const share = async () => {
-    const text = `SUKIMAで遊ぼう！ 部屋コード: ${code}`;
-    if (navigator.share && matchMedia('(pointer: coarse)').matches) {
-      try {
-        await navigator.share({ title: 'SUKIMA', text, url });
-        return;
-      } catch (e) {
-        // ユーザーがキャンセルした場合はそのまま終了、共有が使えない場合はコピーへ
-        if ((e as Error).name === 'AbortError') return;
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url);
+    const r = await shareOrCopy({ title: 'SUKIMA', text: inviteText(code, gameName), url });
+    if (r === 'copied') {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
-    } catch {
+    } else if (r === 'failed') {
       // クリップボードが使えない環境では URL を表示する
       setShown(url);
     }
@@ -309,7 +309,7 @@ function RoomScreen({ room, state }: { room: RoomHandle; state: RoomState }) {
             <span className="room-code" title="ルームコード">
               <span className="muted room-label">ROOM</span> <span className="mono">{state.code}</span>
             </span>
-            <ShareButton code={state.code} />
+            <ShareButton code={state.code} gameName={findGame(state.game?.id ?? state.selectedGame)?.name} />
             {!wide && (
               <button className="btn small chat-toggle" onClick={() => setChatOpen(true)} aria-label="チャットを開く">
                 <ChatIcon />
@@ -461,14 +461,59 @@ function GameCrashed({ onRetry, onLobby }: { onRetry: () => void; onLobby?: () =
   );
 }
 
+// ホスト 1 人のロビーで最初に見せる招待カード（J-02）。URL を見せ、コピーと共有を大きいボタンで並べる
+function InviteCard({ code, gameName }: { code: string; gameName: string | undefined }) {
+  const url = roomUrl(code);
+  const [note, setNote] = useState('');
+  const flash = (text: string) => {
+    setNote(text);
+    setTimeout(() => setNote(''), 1800);
+  };
+  const copyUrl = async () => {
+    flash((await copyText(url)) ? 'URLをコピーしました' : 'コピーできませんでした。URLを長押ししてコピーしてください');
+  };
+  const share = async () => {
+    const r = await shareOrCopy({ title: 'SUKIMA', text: inviteText(code, gameName), url });
+    if (r === 'copied') flash('招待文をコピーしました。LINEなどに貼り付けてください');
+    else if (r === 'failed') flash('コピーできませんでした。URLを長押ししてコピーしてください');
+  };
+  return (
+    <Panel className="invite-panel" title="友達を招待しよう">
+      <p className="lead-sm">URLを送ると、タップするだけで参加できます（登録不要）。</p>
+      <input
+        className="invite-url mono"
+        readOnly
+        value={url}
+        aria-label="招待URL"
+        onFocus={(e) => e.currentTarget.select()}
+      />
+      <div className="invite-actions">
+        <button className="btn primary" onClick={share}>
+          {canWebShare() ? '招待を送る' : '招待文をコピー'}
+        </button>
+        <button className="btn" onClick={copyUrl}>
+          URLをコピー
+        </button>
+      </div>
+      <p className="invite-note" role="status" aria-live="polite">
+        {note}
+      </p>
+    </Panel>
+  );
+}
+
 function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
-  const { isHost, dispatch } = room;
+  const { isHost, online, dispatch } = room;
   const selected = findGame(state.selectedGame);
+  // ホストしかいない間は、次にやることが「招待」だけなので大きく出す（J-02）。
+  // 2 人以上になったら消し、招待はヘッダーの小さい「招待する」に任せる
+  const alone = isHost && state.players.filter((p) => online.has(p.id)).length <= 1;
 
   return (
     // スマホでは「次に遊ぶゲーム → メンバー → ゲームを選ぶ」の順に並べる（CSS の order）。
     // ゲストが最初に「これから何が始まるか」を見られるようにするため（design/README.md）
     <div className="lobby">
+      {alone && <InviteCard code={state.code} gameName={selected?.name} />}
       <Panel className="picker-panel" title="ゲームを選ぶ" aside={!isHost && <span className="pill">ホストが選びます</span>}>
         {CATEGORIES.map((cat) => (
           <div key={cat} className="picker-group">
@@ -576,6 +621,7 @@ function GameArea({ room, state }: { room: RoomHandle; state: RoomState }) {
 
   if (!def) return <UnknownGame onLobby={toLobby} />;
   const View = def.View;
+  const over = isGameOver(def.id, game.state);
 
   return (
     <div className="stack">
@@ -588,7 +634,8 @@ function GameArea({ room, state }: { room: RoomHandle; state: RoomState }) {
           <button className="btn small ghost" onClick={() => setShowRules((v) => !v)}>
             ルール
           </button>
-          {isHost && (
+          {/* 終わった後は結果の直下に大きいボタンを出すので、見出し横の小さいボタンはゲーム中だけにする */}
+          {isHost && !over && (
             <>
               <button className="btn small ghost" onClick={() => dispatch({ type: 'startGame', online: [...online] })}>
                 もう一度
@@ -621,6 +668,52 @@ function GameArea({ room, state }: { room: RoomHandle; state: RoomState }) {
           send={(action: unknown) => dispatch({ type: 'game', action })}
         />
       </ErrorBoundary>
+      {over && <NextActions room={room} state={state} def={def} />}
+    </div>
+  );
+}
+
+// ゲームが終わったこと（結果表示）を表す phase。GameDef に終了判定がまだないので、画面側で状態の phase を読む。
+// ワードウルフだけは結果が 'result'（ほかのゲームの 'result' はラウンドの途中経過）
+const FINAL_PHASE: Record<string, string> = { wordwolf: 'result' };
+function isGameOver(id: string, s: unknown): boolean {
+  if (typeof s !== 'object' || s === null || !('phase' in s)) return false;
+  const final = Object.hasOwn(FINAL_PHASE, id) ? FINAL_PHASE[id] : 'over';
+  return s.phase === final;
+}
+
+// 結果の直下に出す「次の行動」（J-04）。ホストは大きいボタンで次へ、ゲストには待っていることを示して固まって見えないようにする
+function NextActions({ room, state, def }: { room: RoomHandle; state: RoomState; def: GameDef }) {
+  const { isHost, online, dispatch } = room;
+  if (!isHost) {
+    return (
+      <p className="notice waiting next-wait">
+        <span className="dots" aria-hidden>
+          <i />
+          <i />
+          <i />
+        </span>
+        ホストが次を選んでいます…
+      </p>
+    );
+  }
+  const count = state.players.filter((p) => online.has(p.id)).length;
+  const tooFew = count < def.minPlayers;
+  const tooMany = count > def.maxPlayers;
+  return (
+    <div className="next-actions">
+      <button
+        className="btn primary block"
+        disabled={tooFew || tooMany}
+        onClick={() => dispatch({ type: 'startGame', online: [...online] })}
+      >
+        もう一度
+      </button>
+      <button className="btn block" onClick={() => dispatch({ type: 'endGame' })}>
+        別のゲームを選ぶ
+      </button>
+      {tooFew && <p className="hint">「{def.name}」はあと{def.minPlayers - count}人必要です。</p>}
+      {tooMany && <p className="hint">「{def.name}」は{def.maxPlayers}人までです。</p>}
     </div>
   );
 }

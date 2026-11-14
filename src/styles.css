@@ -949,6 +949,41 @@ input:focus {
   display: contents;
 }
 
+/* ホスト 1 人のロビーの招待カード（J-02）。次にやることが招待だけなので、いちばん上に置く */
+.invite-panel {
+  order: 0;
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+.invite-panel .lead-sm {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.invite-url {
+  width: 100%;
+  min-width: 0;
+  font-size: 16px; /* iOS のズーム防止（16px 以上） */
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.invite-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 10px;
+}
+
+/* コピー結果の知らせ。空でも高さを取っておき、出たときにボタンが動かないようにする */
+.invite-note {
+  margin: 0;
+  min-height: 1.4em;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .selected-panel {
   order: 1;
 }
@@ -2698,6 +2733,29 @@ button.card {
   margin: 0;
 }
 
+/* ゲームオーバー画面の「友達と勝負する」「記録を共有」（J-05・J-06） */
+.over-extras {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 360px;
+  margin-top: 8px;
+}
+
+.over-extras .invite-note {
+  color: var(--stage-text);
+}
+
+.versus-name {
+  text-align: left;
+}
+
+.btn-sub {
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .challenge-over > .muted {
   color: var(--stage-text);
   font-weight: 900;
@@ -2738,5 +2796,20 @@ button.card {
   *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* 結果の直下に出す次の行動（J-04）。片手で押しやすいよう大きいボタンを縦に並べる */
+.next-actions {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .next-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+  .next-actions .hint {
+    grid-column: 1 / -1;
   }
 }
