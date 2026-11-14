@@ -16,7 +16,7 @@
 
 ## 進行中
 - **公開**：手順書 `docs/dev/11-launch-guide.md` 完成。公開アドレス https://sukima-ee3.pages.dev/ 。PO が Supabase（無料・東京、Legacy の anon キー使用、Allow public access オン）を作成し、Cloudflare Pages で公開してトップが開けた（最初に誤って Workers で作り、Pages で作り直した）。**次は PO の実機確認（11 §3、AC-M1〜M4）**
-- **公開前の改善**：J-01（OGP 画像 `public/ogp.png`・タグ）・J-02〜J-06・README の Cloudflare 化を実装し、Reviewer が Approve（`docs/dev/09-review.md`）。推奨 1〜4・6 も対応済み（`GameDef.isOver` など）。**作業ブランチにあり、`main` への取り込みは PO の OK 待ち**。残り：J-23 最小計測（D-41 の計測と合わせて、CTO・Security レビュー要）、推奨 5（独自ドメイン移行時の確認項目を 11 に追加）
+- **公開前の改善**：J-01（OGP 画像 `public/ogp.png`・タグ）・J-02〜J-06・README の Cloudflare 化を実装し、Reviewer が Approve（`docs/dev/09-review.md`）。推奨 1〜4・6 も対応済み（`GameDef.isOver` など）。**PR #2 で `main` にマージ済み（2026-11-14、Cloudflare が自動で再公開）**。残り：J-23 最小計測（D-41 の計測と合わせて、CTO・Security レビュー要）、推奨 5（独自ドメイン移行時の確認項目を 11 に追加）
 - 申し送り（CTO の報告より）：①新形式の publishable キー対応（Backend、旧 anon キーは 2026 年末ごろ廃止予定）②Supabase 無料の 7 日停止がデータベース未使用でも起きるか要確認 ③README を Cloudflare Pages の手順に更新（Client）④手順書に Workers と Pages の見分け方を目立たせる（CTO）⑤`.nvmrc` 追加は任意
 - 収益目標の検討（`docs/strategy/revenue-target/`）：01 たたき台 → 02 CTO・PdM レビュー → 03 批評 → PO の回答 Q1〜Q8 → 04 Marketing の改訂 → **05 最終案（完成、PO の判断待ち：D-36〜D-40）**
 
