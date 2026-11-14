@@ -62,3 +62,6 @@ export const reduce = (s: MajorityState, act: MajorityAction, by: string, now: n
 
 export const schedule = (s: MajorityState): Scheduled<MajorityAction> =>
   s.phase === 'over' ? null : { at: s.until, action: { type: 'next' } };
+
+// 終了判定（結果画面・共有の表示に使う）
+export const isOver = (s: MajorityState): boolean => s.phase === 'over';

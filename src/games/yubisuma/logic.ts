@@ -101,3 +101,6 @@ export const reduce = (s: YubisumaState, a: YubisumaAction, by: string, now: num
 
 export const schedule = (s: YubisumaState): Scheduled<YubisumaAction> =>
   s.phase === 'reveal' ? { at: s.revealUntil, action: { type: 'next' } } : null;
+
+// 終了判定（結果画面・共有の表示に使う）
+export const isOver = (s: YubisumaState): boolean => s.phase === 'over';
