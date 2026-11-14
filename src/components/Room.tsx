@@ -465,17 +465,24 @@ function GameCrashed({ onRetry, onLobby }: { onRetry: () => void; onLobby?: () =
 function InviteCard({ code, gameName }: { code: string; gameName: string | undefined }) {
   const url = roomUrl(code);
   const [note, setNote] = useState('');
-  const flash = (text: string) => {
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  // 成功の文だけ自動で消す。失敗の文は「長押しでコピー」という次の手順なので、読み終わるまで残す。
+  // 押すたびに前のタイマーを止め、新しい文が古いタイマーで消されないようにする
+  const flash = (text: string, autoHide: boolean) => {
+    clearTimeout(timer.current);
     setNote(text);
-    setTimeout(() => setNote(''), 1800);
+    if (autoHide) timer.current = setTimeout(() => setNote(''), 1800);
   };
+  const failed = () => flash('コピーできませんでした。URLを長押ししてコピーしてください', false);
   const copyUrl = async () => {
-    flash((await copyText(url)) ? 'URLをコピーしました' : 'コピーできませんでした。URLを長押ししてコピーしてください');
+    if (await copyText(url)) flash('URLをコピーしました', true);
+    else failed();
   };
   const share = async () => {
     const r = await shareOrCopy({ title: 'SUKIMA', text: inviteText(code, gameName), url });
-    if (r === 'copied') flash('招待文をコピーしました。LINEなどに貼り付けてください');
-    else if (r === 'failed') flash('コピーできませんでした。URLを長押ししてコピーしてください');
+    if (r === 'copied') flash('招待文をコピーしました。LINEなどに貼り付けてください', true);
+    else if (r === 'failed') failed();
   };
   return (
     <Panel className="invite-panel" title="友達を招待しよう">
@@ -507,7 +514,7 @@ function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
   const selected = findGame(state.selectedGame);
   // ホストしかいない間は、次にやることが「招待」だけなので大きく出す（J-02）。
   // 2 人以上になったら消し、招待はヘッダーの小さい「招待する」に任せる
-  const alone = isHost && state.players.filter((p) => online.has(p.id)).length <= 1;
+  const alone = isHost && onlineCount(state, online) <= 1;
 
   return (
     // スマホでは「次に遊ぶゲーム → メンバー → ゲームを選ぶ」の順に並べる（CSS の order）。
@@ -550,9 +557,11 @@ function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
 function SelectedGame({ room, state, selected }: { room: RoomHandle; state: RoomState; selected: GameDef }) {
   const { isHost, online, dispatch } = room;
   const options = resolveOptions(selected, state.gameOptions?.[selected.id]);
-  const count = state.players.filter((p) => online.has(p.id)).length;
+  const count = onlineCount(state, online);
   const tooFew = count < selected.minPlayers;
   const tooMany = count > selected.maxPlayers;
+  // ホスト 1 人のときは上に招待カードが出ているので、そちらへ案内する
+  const alone = isHost && count <= 1;
 
   return (
     <Panel className="selected-panel" title="次に遊ぶゲーム" aside={!isHost && <span className="pill">ホストが選びます</span>}>
@@ -594,7 +603,11 @@ function SelectedGame({ room, state, selected }: { room: RoomHandle; state: Room
           >
             スタート（{count}人）
           </button>
-          {tooFew && <p className="hint">あと{selected.minPlayers - count}人必要です。「招待する」からURLを送りましょう。</p>}
+          {tooFew && (
+            <p className="hint">
+              あと{selected.minPlayers - count}人必要です。{alone ? '上のカードからURLを送りましょう。' : '「招待する」からURLを送りましょう。'}
+            </p>
+          )}
           {tooMany && <p className="hint">このゲームは{selected.maxPlayers}人までです。</p>}
         </>
       ) : (
@@ -621,7 +634,8 @@ function GameArea({ room, state }: { room: RoomHandle; state: RoomState }) {
 
   if (!def) return <UnknownGame onLobby={toLobby} />;
   const View = def.View;
-  const over = isGameOver(def.id, game.state);
+  // 終了判定は各ゲームの GameDef.isOver に任せる。状態が壊れていても例外にしないよう、object であることを先に確かめる
+  const over = typeof game.state === 'object' && game.state !== null ? (def.isOver?.(game.state) ?? false) : false;
 
   return (
     <div className="stack">
@@ -673,13 +687,9 @@ function GameArea({ room, state }: { room: RoomHandle; state: RoomState }) {
   );
 }
 
-// ゲームが終わったこと（結果表示）を表す phase。GameDef に終了判定がまだないので、画面側で状態の phase を読む。
-// ワードウルフだけは結果が 'result'（ほかのゲームの 'result' はラウンドの途中経過）
-const FINAL_PHASE: Record<string, string> = { wordwolf: 'result' };
-function isGameOver(id: string, s: unknown): boolean {
-  if (typeof s !== 'object' || s === null || !('phase' in s)) return false;
-  const final = Object.hasOwn(FINAL_PHASE, id) ? FINAL_PHASE[id] : 'over';
-  return s.phase === final;
+// 参加者のうち、いまつながっている人数（スタート可否・招待カードの表示で同じ数え方を使う）
+function onlineCount(state: RoomState, online: Set<string>): number {
+  return state.players.filter((p) => online.has(p.id)).length;
 }
 
 // 結果の直下に出す「次の行動」（J-04）。ホストは大きいボタンで次へ、ゲストには待っていることを示して固まって見えないようにする
@@ -697,7 +707,7 @@ function NextActions({ room, state, def }: { room: RoomHandle; state: RoomState;
       </p>
     );
   }
-  const count = state.players.filter((p) => online.has(p.id)).length;
+  const count = onlineCount(state, online);
   const tooFew = count < def.minPlayers;
   const tooMany = count > def.maxPlayers;
   return (
