@@ -116,3 +116,19 @@
 - 設計書：`docs/dev/02-architecture.md` の §3.1・§5.4・P1-4 を更新し、P2-12（R-01）・P2-13（R-02）を追記。
 - 残る注意（R-02）：bye より後に、その人が bye の直前に送った `hb` / `action` が（遅延のゆらぎで順序が入れ替わって）届くと、去った扱いが外れて `lastSeen` の判定（9 秒）に戻る。修正前から `state` で同じことが起きうる形で、bye が届かなかった場合と同じ挙動に落ちるだけなので許容した。
 - 確認：`npm run typecheck` OK、`npm test` 5 回連続で 16 ファイル・222 件通過・2 件 skip（QA-BUG-03・05、従来どおり）・失敗 0、`npm run build` OK（JS 326.3KB / gzip 102.7KB）。
+
+---
+
+## 公開前の改善（J-01〜J-06・README）のレビュー（2026-11-14）
+
+- 対象：`3e5da02..8234304`（ブランチ `claude/agent-roles-directory-x2dzcl`）
+- 判定：**Approve**（必須の指摘なし）。テスト 222 件通過
+- 確認した観点：ホスト権威型（作成直後の `selectGame` はホスト確定後にローカルで処理され、二重送信なし）、XSS（共有文に入るのは検証済みの部屋コードと登録済みのゲーム名だけ）、360px の表示、Web Share 非対応時のコピー失敗の扱い
+
+### 推奨（次の作業で対応）
+1. `Room.tsx` の終了判定（`FINAL_PHASE`）を `GameDef.isOver(state)` に移し、各ゲームの単体テストを足す（Backend → Client）
+2. 招待カードのコピー失敗の文が 1.8 秒で消える。失敗の文は残し、タイマーは押すたびに解除する（Client）
+3. 1 人のロビーのヒントを「上のカードからURLを送りましょう」に（Client）
+4. `share.ts` の `inviteText` / `recordText` の単体テスト（Backend か QA）
+5. `index.html` の公開アドレスの直書き：独自ドメインへ移るときの確認項目を `docs/dev/11` に足す（CTO）
+6. オンライン人数の数え方の重複を関数にまとめる（Client、好み）
