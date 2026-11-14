@@ -3,7 +3,7 @@
 新しいセッションで作業を再開するときは、このファイル → `docs/NORTH_STAR.md` → `docs/DECISIONS.md` → `CLAUDE.md` の順に読めば、会話の履歴なしで続きから始められる。
 オーケストレーターは、区切りのよいところでこのファイルを更新する。
 
-- 最終更新：2026-11-14（方向の 6 件と公開先を決定）
+- 最終更新：2026-11-14（Supabase 作成・Cloudflare Pages で初公開。実機確認待ち）
 - 依頼の窓口：「Agent roles directory structure」セッション（オーケストレーター）に一本化。作業ブランチは `claude/agent-roles-directory-x2dzcl`
 - 旧セッション「マルチプレイミニゲームサイト」は使わない（中身は PR #1 で `main` に取り込み済み）
 
@@ -15,6 +15,8 @@
 - 組織の方向（`docs/NORTH_STAR.md`、PO 確認済み）：SUKIMA は 1 作品目で、最優先は SNS のフォロワーを増やすこと
 
 ## 進行中
+- **公開**：手順書 `docs/dev/11-launch-guide.md` 完成。PO が Supabase（無料・東京、Legacy の anon キー使用、Allow public access オン）を作成し、Cloudflare Pages で公開してトップが開けた（最初に誤って Workers で作り、Pages で作り直した）。**次は PO の実機確認（11 §3、AC-M1〜M4）**
+- 申し送り（CTO の報告より）：①新形式の publishable キー対応（Backend、旧 anon キーは 2026 年末ごろ廃止予定）②Supabase 無料の 7 日停止がデータベース未使用でも起きるか要確認 ③README を Cloudflare Pages の手順に更新（Client）④手順書に Workers と Pages の見分け方を目立たせる（CTO）⑤`.nvmrc` 追加は任意
 - 収益目標の検討（`docs/strategy/revenue-target/`）：01 たたき台 → 02 CTO・PdM レビュー → 03 批評 → PO の回答 Q1〜Q8 → 04 Marketing の改訂 → **05 最終案（完成、PO の判断待ち：D-36〜D-40）**
 
 - 市場と稼ぎ方の見直し（`docs/strategy/market-review/`）：**05 最終案（完成、PO の判断待ち：D-41〜D-44）**
