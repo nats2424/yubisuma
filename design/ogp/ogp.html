@@ -6,7 +6,8 @@
 <!--
   OGP 画像の元ファイル（J-01）。design/ogp/render.mjs で 1200×630・deviceScaleFactor 1 で撮る。
   正方形に切り抜かれても成立するよう、ロゴ・コピー・特徴チップは中央 630×630（x=285〜915）に収め、
-  左右の飾り（通話中のスマホ・吹き出し・ステッカー）は切れても主旨が欠けないものだけにする。
+  左右の飾り（テーブルを囲むスマホ・吹き出し・ステッカー）は切れても主旨が欠けないものだけにする。
+  場面は D-25（2026-11-15）の「集まっているときのスキマ時間（対面）」。通話の要素は入れない。
   トークンは案B「ポップ・ステッカー」（src/styles.css）のライト配色。小さいプレビューでも明るく目立つため。
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -52,8 +53,8 @@ svg { display: block; }
 .copy { margin: 0; text-align: center; font-weight: 900; line-height: 1.22; font-size: 62px; letter-spacing: 0.01em; }
 .copy .mark { background: linear-gradient(transparent 58%, var(--yellow) 58%, var(--yellow) 92%, transparent 92%); padding: 0 4px; }
 
-.chips { display: flex; gap: 10px; }
-.chip { font-weight: 900; font-size: 26px; line-height: 1; padding: 12px 18px 14px; background: var(--surface);
+.chips { display: flex; gap: 9px; }
+.chip { font-weight: 900; font-size: 23px; line-height: 1; padding: 12px 14px 14px; background: var(--surface);
   border: 5px solid var(--line); border-radius: 999px; box-shadow: 5px 5px 0 var(--line); white-space: nowrap; }
 .chip.y { background: var(--yellow); }
 .chip.p { background: var(--pink); }
@@ -71,27 +72,41 @@ svg { display: block; }
 <body>
 <div class="canvas">
 
-  <!-- 左：通話中のスマホ（それぞれの家から通話しながら） -->
-  <div class="deco" style="left:44px; top:118px; transform: rotate(-8deg);">
-    <svg width="190" height="330" viewBox="0 0 190 330">
-      <rect x="17" y="17" width="164" height="304" rx="30" fill="#1c1a17" />
-      <rect x="8" y="8" width="164" height="304" rx="30" fill="#fff" class="ln" />
-      <rect x="26" y="40" width="128" height="230" rx="12" fill="#4a74f5" class="ln" />
-      <!-- 通話中の 3 人 -->
-      <circle cx="62" cy="96" r="22" fill="#ffd23f" class="ln" />
-      <circle cx="118" cy="96" r="22" fill="#ff9cc2" class="ln" />
-      <circle cx="90" cy="160" r="22" fill="#2bb3a3" class="ln" />
-      <!-- 通話ボタン -->
-      <circle cx="90" cy="230" r="22" fill="#1f9d57" class="ln" />
-      <path d="M81 221 q3 -4 7 0 l3 5 q1 3 -2 5 q2 5 7 7 q2 -3 5 -2 l5 3 q4 4 0 7 q-8 5 -17 -5 q-11 -11 -8 -20z" fill="#fff" stroke="#1c1a17" stroke-width="3" stroke-linejoin="round"/>
-      <rect x="70" y="286" width="40" height="8" rx="4" fill="#1c1a17" />
+  <!-- 左：テーブルを上から見た絵。囲んだ 4 台のスマホが同じゲーム画面を出している＝同じ場所にいる複数人。
+       左端で切れても「テーブルを囲んで何台か」は残るよう、スマホは右半分にも配る -->
+  <div class="deco" style="left:-70px; top:150px;">
+    <svg width="340" height="340" viewBox="0 0 340 340">
+      <!-- テーブル -->
+      <circle cx="176" cy="176" r="150" fill="#1c1a17" />
+      <circle cx="170" cy="170" r="150" fill="#ffe2b0" class="ln" />
+      <circle cx="170" cy="170" r="112" fill="none" stroke="#1c1a17" stroke-width="3" stroke-dasharray="4 12" stroke-linecap="round" opacity="0.35" />
+      <!-- 真ん中のおやつ皿（集まっている場の雰囲気） -->
+      <circle cx="170" cy="170" r="34" fill="#fff" class="ln" />
+      <circle cx="160" cy="162" r="9" fill="#ff5b3a" stroke="#1c1a17" stroke-width="3" />
+      <circle cx="180" cy="168" r="9" fill="#ffd23f" stroke="#1c1a17" stroke-width="3" />
+      <circle cx="168" cy="182" r="9" fill="#ff9cc2" stroke="#1c1a17" stroke-width="3" />
+      <!-- スマホ 4 台（すべて同じ画面＝みんなで同じゲーム） -->
+      <defs>
+        <g id="ph">
+          <rect x="-24" y="-40" width="52" height="86" rx="10" fill="#1c1a17" />
+          <rect x="-27" y="-43" width="52" height="86" rx="10" fill="#fff" stroke="#1c1a17" stroke-width="4.5" stroke-linejoin="round" />
+          <rect x="-19" y="-33" width="36" height="58" rx="4" fill="#4a74f5" stroke="#1c1a17" stroke-width="3.5" />
+          <path d="M-1 -22 l5 10 11 1 -8 8 2 11 -10 -5 -10 5 2 -11 -8 -8 11 -1z" fill="#ffd23f" stroke="#1c1a17" stroke-width="2.5" stroke-linejoin="round" />
+          <rect x="-9" y="33" width="16" height="4" rx="2" fill="#1c1a17" />
+        </g>
+      </defs>
+      <use href="#ph" transform="translate(170 62) rotate(180)" />
+      <use href="#ph" transform="translate(278 170) rotate(-90)" />
+      <use href="#ph" transform="translate(170 278)" />
+      <use href="#ph" transform="translate(62 170) rotate(90)" />
     </svg>
   </div>
-  <div class="bubble" style="left:84px; top:48px; transform: rotate(5deg); background: var(--yellow);">何かやる？</div>
-  <div class="bubble" style="left:30px; top:486px; transform: rotate(-4deg);">通話はそのまま</div>
+  <div class="bubble" style="left:40px; top:60px; transform: rotate(-5deg); background: var(--yellow);">待ってる間に</div>
+  <div class="bubble" style="left:92px; top:120px; transform: rotate(4deg);">1回やろ！</div>
+  <div class="bubble" style="left:34px; top:512px; transform: rotate(-3deg); background: var(--pink);">もう1回！</div>
 
-  <!-- 右上：隙間時間（ひとり用は中央のチップに入れたので、切れても困らない言葉にする） -->
-  <div class="solo" style="left:966px; top:70px; transform: rotate(9deg);">スキマ<br>時間に<br>サクッと</div>
+  <!-- 右上：手が空いたときの気軽さ（中央のコピーと重ならない言い方。切れても困らない） -->
+  <div class="solo" style="left:966px; top:70px; transform: rotate(9deg);">手が<br>空いたら<br>1ゲーム</div>
   <!-- 右下：ミニゲームのステッカー（星・ハート・稲妻） -->
   <div class="deco" style="left:950px; top:330px;">
     <svg width="240" height="260" viewBox="0 0 240 260">
@@ -109,11 +124,11 @@ svg { display: block; }
 
   <div class="safe">
     <span class="logo">SUKI<i class="slit"></i>MA</span>
-    <p class="copy">通話しながら<br><span class="mark">みんなでミニゲーム</span></p>
+    <p class="copy">スキマ時間に<br><span class="mark">みんなでサクッと</span></p>
     <div class="chips">
       <span class="chip p">URLをタップ</span>
       <span class="chip y">登録なし</span>
-      <span class="chip t">ひとりでもOK</span>
+      <span class="chip t">ルールは見ればわかる</span>
     </div>
   </div>
 </div>
