@@ -1,20 +1,19 @@
 import { useLayoutEffect, useRef } from 'react';
 import { Panel, Spectating, nameOf } from '../../components/ui';
 import type { GamePlayer, GameViewProps } from '../types';
-import { PENALTY_MS, ROUNDS, totals, type Outcome, type ReactionAction, type ReactionState } from './logic';
+import {
+  PENALTY_MS,
+  ROUNDS,
+  roundRanking,
+  totalRanking,
+  totals,
+  type Outcome,
+  type ReactionAction,
+  type ReactionState,
+} from './logic';
 
 const fmt = (o: Outcome | undefined) =>
   o === undefined ? '—' : o === 'foul' ? 'フライング' : o === 'miss' ? '押し忘れ' : `${o}ms`;
-
-// ラウンド内の並び：タイムが速い順、続いてフライング・押し忘れ（同じ扱いの中は参加順のまま）
-const roundSortKey = (o: Outcome | undefined) => (typeof o === 'number' ? o : o === 'foul' ? 1e9 : 2e9);
-
-// 同タイムは同順位にする（1 位が 2 人いても両方「1 位」と言い合えるように）
-const rankOf = (cur: Record<string, Outcome>, id: string): number | null => {
-  const o = cur[id];
-  if (typeof o !== 'number') return null;
-  return 1 + Object.values(cur).filter((x) => typeof x === 'number' && x < o).length;
-};
 
 // 今どのラウンドかを点で見せる（終わったラウンドは塗り、今のラウンドは大きく）
 function RoundDots({ round }: { round: number }) {
@@ -41,14 +40,14 @@ function RoundResult({
   playing: boolean;
   total: Record<string, number>;
 }) {
-  const cur = s.current;
-  const order = [...s.order].sort((a, b) => roundSortKey(cur[a]) - roundSortKey(cur[b]));
-  const winners = order.filter((id) => rankOf(cur, id) === 1);
-  const best = winners.length > 0 ? cur[winners[0]] : undefined;
-  const mine = cur[me];
-  const myRank = rankOf(cur, me);
-  const fouls = order.filter((id) => cur[id] === 'foul');
-  const misses = order.filter((id) => cur[id] === 'miss');
+  // 順位付け（同タイムは同順位・フライングと押し忘れは順位なし）は logic.ts の純粋関数に任せる
+  const rows = roundRanking(s);
+  const winners = rows.filter((r) => r.rank === 1).map((r) => r.id);
+  const best = winners.length > 0 ? s.current[winners[0]] : undefined;
+  const mine = s.current[me];
+  const myRank = rows.find((r) => r.id === me)?.rank ?? null;
+  const fouls = rows.filter((r) => r.outcome === 'foul').map((r) => r.id);
+  const misses = rows.filter((r) => r.outcome === 'miss').map((r) => r.id);
   const last = s.round >= ROUNDS;
 
   return (
@@ -79,9 +78,7 @@ function RoundResult({
       )}
 
       <ol className="reaction-round-list">
-        {order.map((id) => {
-          const r = rankOf(cur, id);
-          const o = cur[id];
+        {rows.map(({ id, rank: r, outcome: o }) => {
           const cls = [r === 1 ? 'first' : '', typeof o === 'number' ? '' : 'out', id === me ? 'me' : '']
             .filter(Boolean)
             .join(' ');
@@ -130,7 +127,7 @@ export default function ReactionView({ state: s, me, players, send }: GameViewPr
   };
 
   const total = totals(s);
-  const ranking = [...s.order].sort((a, b) => total[a] - total[b]);
+  const ranking = totalRanking(s);
 
   if (s.phase === 'over') {
     return (

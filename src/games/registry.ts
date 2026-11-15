@@ -90,7 +90,7 @@ export const GAME_LIST: GameDef[] = [
     ],
     minPlayers: 1,
     maxPlayers: 10,
-    minutes: '約1分',
+    minutes: '約1〜2分',
     category: 'quick',
     init: reaction.init,
     reduce: reaction.reduce,
