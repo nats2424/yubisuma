@@ -132,3 +132,20 @@
 4. `share.ts` の `inviteText` / `recordText` の単体テスト（Backend か QA）
 5. `index.html` の公開アドレスの直書き：独自ドメインへ移るときの確認項目を `docs/dev/11` に足す（CTO）
 6. オンライン人数の数え方の重複を関数にまとめる（Client、好み）
+
+---
+
+## QR コード（J-27）・反射神経のラウンド結果・OGP 改訂のレビュー（2026-11-15）
+
+- 対象：`efd279c..HEAD`（src・index.html・public・package.json）
+- 判定：**Approve**（必須の指摘なし）。テスト 253 件通過
+- 確認：QR の中身は招待 URL だけでブラウザ内で生成（外部送信なし、innerHTML 不使用）。qrcode-generator 2.0.4（MIT、依存なし）。モーダルは Esc・背景・「閉じる」で閉じる。360px で崩れなし。反射神経の View は表示だけで、ホスト権威型を保つ
+
+### 推奨（次の作業で対応）
+1. QR のモーダルを閉じたあと、フォーカスを「QRを表示」ボタンに戻す（Client）
+2. `onClose` を `useCallback` にして Esc のリスナーの付け直しを止める（Client）
+3. モーダル表示中は背景をスクロールさせない（Client）
+4. `60dvh` 非対応ブラウザ向けに `width: min(100%, 340px)` を先に置く（Client）
+5. 反射神経の所要時間の表記を「約1〜2分」に（Backend、registry.ts）
+6. 反射神経の順位付け（`rankOf`・`roundSortKey`）を logic.ts の純粋関数に移してテスト（Backend → Client）
+7. 結果画面のペナルティ行を 1 行に縮める（Client、好み）

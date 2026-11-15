@@ -984,6 +984,115 @@ input:focus {
   text-align: center;
 }
 
+/* 招待カードの中身。スマホでは QR を上に大きく、広い画面では QR を左・URL とボタンを右に並べる */
+.invite-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.invite-text {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.invite-qr {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 360px でもカメラで読める大きさ（目安 180px 以上）。余白は SVG の中に 4 セル分ある */
+.invite-qr .qr {
+  width: min(220px, 70vw);
+}
+
+.invite-qr figcaption,
+.qr-caption {
+  font-weight: 900;
+  font-size: 15px;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .invite-body {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .invite-qr .qr {
+    width: 240px;
+  }
+}
+
+/* QR は常に白地に黒（ダークテーマでも反転しない）。枠線は墨で、白い余白と背景の境目を分かるようにする */
+.qr {
+  display: block;
+  aspect-ratio: 1;
+  height: auto;
+  background: #fff;
+  border: var(--stroke) solid var(--ink);
+  border-radius: 10px;
+}
+
+.qr-btn {
+  gap: 6px;
+}
+
+.qr-glyph {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.qr-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(0 0 0 / 0.6);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.qr-dialog {
+  background: var(--surface);
+  color: var(--text);
+  border: var(--stroke) solid var(--line);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: min(100%, 400px);
+  animation: sheet-up 0.2s ease-out;
+}
+
+/* モーダルは QR を見せるためだけのものなので、画面に収まる範囲でできるだけ大きく出す */
+.qr-dialog .qr {
+  width: min(100%, 340px, 60dvh);
+}
+
+.qr-dialog p {
+  margin: 0;
+}
+
+.qr-code-line .mono {
+  font-size: 18px;
+  color: var(--text);
+}
+
+.qr-dialog .btn {
+  width: 100%;
+}
+
 .selected-panel {
   order: 1;
 }
@@ -1808,6 +1917,236 @@ input:focus {
 .reaction-sub {
   font-size: 16px;
   font-weight: 700;
+}
+
+.reaction-sub.small {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.85;
+  padding: 0 16px;
+  text-align: center;
+}
+
+/* ラウンドの進み具合（終わった回は塗り、今の回は黄色で大きく） */
+.reaction-dots {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+.reaction-dots > span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+.reaction-dots > span.done {
+  background: #fff;
+}
+
+.reaction-dots > span.now {
+  background: var(--yellow);
+  border-color: var(--ink);
+  transform: scale(1.35);
+}
+
+/* ラウンドごとの結果（画面の真ん中に大きく。対面で見せ合える見た目） */
+.reaction-result {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  animation: reaction-pop 0.25s ease-out;
+}
+
+@keyframes reaction-pop {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reaction-result {
+    animation: none;
+  }
+}
+
+.reaction-result-label {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-pop);
+  font-size: clamp(24px, 7vw, 32px);
+  line-height: 1.2;
+}
+
+.reaction-result-of {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.reaction-winner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 14px 16px;
+  border: var(--stroke) solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  background: var(--yellow);
+  color: var(--ink);
+  text-align: center;
+}
+
+.reaction-winner.none {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.reaction-winner-badge {
+  padding: 2px 12px;
+  border: var(--stroke) solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  font-weight: 900;
+  font-size: 15px;
+}
+
+.reaction-winner-name {
+  font-size: 22px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.reaction-winner-time {
+  font-family: var(--font-pop);
+  font-size: clamp(48px, 15vw, 68px);
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  -webkit-text-stroke: 6px var(--ink);
+  paint-order: stroke fill;
+}
+
+.reaction-mine {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.reaction-mine b {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--good);
+}
+
+.reaction-mine.bad b {
+  color: var(--bad);
+}
+
+.reaction-mine .reaction-mine-rank {
+  color: var(--accent-text);
+}
+
+.reaction-round-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reaction-round-list > li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  font-weight: 700;
+}
+
+.reaction-round-list > li.first {
+  background: var(--yellow);
+  color: var(--ink);
+  border: var(--stroke) solid var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+.reaction-round-list > li.me {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.reaction-round-list > li.out {
+  color: var(--bad);
+}
+
+.reaction-rank {
+  font-family: var(--font-pop);
+  font-size: 20px;
+  text-align: center;
+}
+
+.reaction-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.reaction-round-list > li.first .reaction-name {
+  color: var(--ink);
+}
+
+.reaction-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.reaction-total {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.reaction-round-list > li.first .reaction-total {
+  color: #4a443b;
+}
+
+.reaction-penalty {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px 10px;
+  text-align: center;
+}
+
+.reaction-next {
+  margin: 0;
+  text-align: center;
+  font-weight: 900;
+  color: var(--muted);
 }
 
 /* 多数派 */

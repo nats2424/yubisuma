@@ -7,6 +7,7 @@ import { isOnlineMode } from '../lib/transport';
 import { chatBlockedUntil, MAX_ROOM_PLAYERS, type RoomState } from '../room/logic';
 import { useRoom, type RoomHandle } from '../room/useRoom';
 import Chat from './Chat';
+import QrCode from './QrCode';
 import GameIcon, { ChatIcon } from './GameIcon';
 import ErrorBoundary, { CrashScreen, reloadPage } from './ErrorBoundary';
 import { Brand, DemoBanner } from './Layout';
@@ -392,7 +393,7 @@ function Members({
   onKick: (id: string) => void;
 }) {
   return (
-    <Panel className="members-panel" title={`メンバー ${state.players.length}人`}>
+    <Panel className="members-panel" title={`メンバー ${state.players.length}人`} aside={<QrButton code={state.code} />}>
       <ul className="members">
         {state.players.map((p) => (
           <li key={p.id} className={online.has(p.id) ? '' : 'offline'}>
@@ -461,6 +462,54 @@ function GameCrashed({ onRetry, onLobby }: { onRetry: () => void; onLobby?: () =
   );
 }
 
+// 2 人以上になって招待カードが消えたあとも、目の前の人を追加で呼べるように QR を出す（D-25）。
+// ヘッダーは 320px で既に 1 行ぎりぎり（QA-BUG-08）なので、メンバー欄の見出しに置く
+function QrButton({ code }: { code: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button className="btn small ghost qr-btn" onClick={() => setOpen(true)} aria-haspopup="dialog">
+        <QrGlyph />
+        QRを表示
+      </button>
+      {open && <QrDialog url={roomUrl(code)} code={code} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function QrDialog({ url, code, onClose }: { url: string; code: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="qr-backdrop" onClick={onClose}>
+      <div className="qr-dialog" role="dialog" aria-modal="true" aria-label="招待のQRコード" onClick={(e) => e.stopPropagation()}>
+        <QrCode text={url} label="招待URLのQRコード" />
+        <p className="qr-caption">カメラで読み取って参加</p>
+        <p className="muted qr-code-line">
+          ROOM <span className="mono">{code}</span>
+        </p>
+        <button className="btn" onClick={onClose} autoFocus>
+          閉じる
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ボタン用の小さな QR の印（中身は飾り。読み取り用ではない）
+function QrGlyph() {
+  return (
+    <svg className="qr-glyph" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+      <path d="M1 1h6v6H1zm2 2v2h2V3zM9 1h6v6H9zm2 2v2h2V3zM1 9h6v6H1zm2 2v2h2v-2zM9 9h2v2H9zm2 2h2v2h-2zm2-2h2v2h-2zm0 4h2v2h-2zm-4 0h2v2H9z" />
+    </svg>
+  );
+}
+
 // ホスト 1 人のロビーで最初に見せる招待カード（J-02）。URL を見せ、コピーと共有を大きいボタンで並べる
 function InviteCard({ code, gameName }: { code: string; gameName: string | undefined }) {
   const url = roomUrl(code);
@@ -486,25 +535,34 @@ function InviteCard({ code, gameName }: { code: string; gameName: string | undef
   };
   return (
     <Panel className="invite-panel" title="友達を招待しよう">
-      <p className="lead-sm">URLを送ると、タップするだけで参加できます（登録不要）。</p>
-      <input
-        className="invite-url mono"
-        readOnly
-        value={url}
-        aria-label="招待URL"
-        onFocus={(e) => e.currentTarget.select()}
-      />
-      <div className="invite-actions">
-        <button className="btn primary" onClick={share}>
-          {canWebShare() ? '招待を送る' : '招待文をコピー'}
-        </button>
-        <button className="btn" onClick={copyUrl}>
-          URLをコピー
-        </button>
+      <div className="invite-body">
+        {/* 対面で集まっているとき（D-25）は、URL を送るより目の前で読んでもらう方が早い */}
+        <figure className="invite-qr">
+          <QrCode text={url} label="招待URLのQRコード" />
+          <figcaption>カメラで読み取って参加</figcaption>
+        </figure>
+        <div className="invite-text">
+          <p className="lead-sm">近くの人はQRを読み取るだけ。離れた人にはURLを送ると、タップで参加できます（登録不要）。</p>
+          <input
+            className="invite-url mono"
+            readOnly
+            value={url}
+            aria-label="招待URL"
+            onFocus={(e) => e.currentTarget.select()}
+          />
+          <div className="invite-actions">
+            <button className="btn primary" onClick={share}>
+              {canWebShare() ? '招待を送る' : '招待文をコピー'}
+            </button>
+            <button className="btn" onClick={copyUrl}>
+              URLをコピー
+            </button>
+          </div>
+          <p className="invite-note" role="status" aria-live="polite">
+            {note}
+          </p>
+        </div>
       </div>
-      <p className="invite-note" role="status" aria-live="polite">
-        {note}
-      </p>
     </Panel>
   );
 }
