@@ -1077,6 +1077,8 @@ input:focus {
 
 /* モーダルは QR を見せるためだけのものなので、画面に収まる範囲でできるだけ大きく出す */
 .qr-dialog .qr {
+  /* dvh に対応していないブラウザでは 2 行目が無視されるので、先に dvh なしの幅を置く */
+  width: min(100%, 340px);
   width: min(100%, 340px, 60dvh);
 }
 
@@ -1298,6 +1300,69 @@ input:focus {
 
 .now-head .lead-sm {
   margin-top: 2px;
+}
+
+/* ルールの「ひと言」（J-26）。待っている全員が数秒で読めるよう、本文より大きく太く */
+.one-liner {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.rules-more summary,
+.rules-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.rules-more summary {
+  cursor: pointer;
+  /* 指で押しやすい高さを取る */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+}
+
+.rules-more summary::-webkit-details-marker {
+  display: none;
+}
+
+/* 開閉は三角の向きでも分かるようにする */
+.rules-more summary::before {
+  content: '▸';
+  font-size: 14px;
+}
+
+.rules-more[open] summary::before {
+  content: '▾';
+}
+
+.rules-more .rules {
+  margin-bottom: 8px;
+}
+
+.rules-heading {
+  margin: 10px 0 6px;
+}
+
+/* 今の人数では始められないゲーム。点線の枠と「あと n 人」の文言で、色以外でも分かるようにする */
+.game-option.unplayable:not(.selected) {
+  border-style: dashed;
+}
+
+.game-need {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--bad);
+}
+
+.game-option.selected .game-need {
+  color: var(--ink);
 }
 
 .option-row {
@@ -1723,56 +1788,6 @@ input:focus {
 .tally > li > span:first-child {
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-/* 指スマ */
-.seat-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr));
-}
-
-.seat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 12px 8px;
-  border-radius: 14px;
-  background: var(--surface-2);
-  border: var(--stroke) solid transparent;
-  text-align: center;
-}
-
-/* コールする人は墨線の枠＋影（色以外でも区別） */
-.seat.is-caller {
-  border-color: var(--line);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-}
-
-.seat-name {
-  font-size: 15px;
-  font-weight: 900;
-}
-
-.hands {
-  display: flex;
-  gap: 6px;
-  font-size: 28px;
-  line-height: 1.2;
-}
-
-.hands .hand {
-  display: inline;
-  padding: 0;
-}
-
-.hand.gone {
-  opacity: 0.25;
 }
 
 /* ワードウルフ（話す系のゲームは装飾を控えめにし、お題の読みやすさを優先する） */

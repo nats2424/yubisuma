@@ -22,6 +22,7 @@ export const counterGame: GameDef<CounterState, { type: 'inc' } | { type: 'fire'
   name: 'カウンター',
   emoji: '',
   tagline: '',
+  oneLiner: '',
   rules: [],
   minPlayers: 1,
   maxPlayers: 10,

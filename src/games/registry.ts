@@ -10,8 +10,6 @@ import RushView from './rush/View';
 import ReactionView from './reaction/View';
 import * as wordwolf from './wordwolf/logic';
 import WordWolfView from './wordwolf/View';
-import * as yubisuma from './yubisuma/logic';
-import YubisumaView from './yubisuma/View';
 
 export const GAME_LIST: GameDef[] = [
   {
@@ -19,6 +17,7 @@ export const GAME_LIST: GameDef[] = [
     name: 'ワードウルフ',
     emoji: '🐺',
     tagline: '1人だけ違うお題。会話から少数派を見抜け',
+    oneLiner: 'お題について話して、1 人だけ違うお題の人を当てよう',
     rules: [
       '全員にお題が配られますが、1人（6人以上なら2人）だけ少し違うお題を持っています。',
       '制限時間（標準3分）でお題について話し合います。お題そのものを口にするのはNG。',
@@ -51,6 +50,7 @@ export const GAME_LIST: GameDef[] = [
     name: '多数派ゲーム',
     emoji: '⚖️',
     tagline: '「みんなはどっち？」を読み当てる',
+    oneLiner: 'みんなが選びそうな方を選ぼう',
     rules: [
       '2択の質問が5問（または10問）出ます。',
       '自分の好みではなく「多数派になりそうな方」を選びます。',
@@ -82,6 +82,7 @@ export const GAME_LIST: GameDef[] = [
     name: '反射神経バトル',
     emoji: '⚡',
     tagline: '画面が光った瞬間にタップ。一番速いのは誰だ',
+    oneLiner: '緑になったら、すぐタップ',
     rules: [
       '画面が緑に変わったらすぐタップ。早すぎるとフライング。',
       '全5ラウンドの反応時間の合計で勝負。',
@@ -89,7 +90,7 @@ export const GAME_LIST: GameDef[] = [
     ],
     minPlayers: 1,
     maxPlayers: 10,
-    minutes: '約1分',
+    minutes: '約1〜2分',
     category: 'quick',
     init: reaction.init,
     reduce: reaction.reduce,
@@ -102,6 +103,7 @@ export const GAME_LIST: GameDef[] = [
     name: 'ミニゲームラッシュ',
     emoji: '💥',
     tagline: '数秒のミニゲームが次々に。どこまで生き残れるか',
+    oneLiner: '出た指示どおりに、すぐ操作。ミスするとライフが減る',
     rules: [
       '「連打！」「よけろ！」「止めろ！」など、数秒で終わるミニゲームが次々に出ます。全員同時に挑戦。',
       // 数値は調整値から作る（調整しても説明と食い違わないように。AC-42）
@@ -127,30 +129,11 @@ export const GAME_LIST: GameDef[] = [
     View: RushView,
   },
   {
-    id: 'yubisuma',
-    name: '指スマ',
-    emoji: '👍',
-    tagline: 'いっせーの！で上がる親指の合計を当てる',
-    rules: [
-      '全員が両手の親指を何本上げるか（0〜残りの手の数）を決めます。',
-      'コール役は合わせて「全員の親指の合計」を予想します。',
-      '的中したらコール役は片手を下ろせます。両手を下ろせたら上がり。最後に残った人の負け。',
-    ],
-    minPlayers: 2,
-    maxPlayers: 8,
-    minutes: '約3〜5分',
-    category: 'quick',
-    init: yubisuma.init,
-    reduce: yubisuma.reduce,
-    schedule: yubisuma.schedule,
-    isOver: yubisuma.isOver,
-    View: YubisumaView,
-  },
-  {
     id: 'daifugo',
     name: '大富豪',
     emoji: '🃏',
     tagline: 'おなじみのトランプゲーム。ラウンドを重ねて頂点へ',
+    oneLiner: '前より強いカードを出して、早く手札をなくそう',
     rules: [
       '場と同じ枚数で、より強いカードを出していきます（3が最弱、2が最強、ジョーカーは万能）。出せない・出さないときはパス。',
       '全員がパスしたら場が流れ、最後に出した人から再開。8を出すと「8切り」で即流れます。',
@@ -183,7 +166,10 @@ export const GAME_LIST: GameDef[] = [
 ];
 
 export const GAMES: Record<string, GameDef> = Object.fromEntries(GAME_LIST.map((g) => [g.id, g]));
-export const DEFAULT_GAME = GAME_LIST[0].id;
+// 部屋を作ったときに最初に選ばれているゲーム（D-45 / J-07）。
+// 1 人から遊べて指示だけで分かるラッシュを最初の 1 本にする（ワードウルフは説明が要るので 2 本目以降に向く）。
+// 一覧の並び（GAME_LIST）とは切り離して、ここで明示する
+export const DEFAULT_GAME: string = 'rush';
 
 export const CATEGORIES: GameCategory[] = ['quick', 'long'];
 export const gamesIn = (category: GameCategory) => GAME_LIST.filter((g) => g.category === category);

@@ -47,6 +47,9 @@ export interface GameDef<S = any, A = any> {
   name: string;
   emoji: string;
   tagline: string;
+  // ロビーで大きく見せる 1 行の「やること」（J-26）。rules（くわしいルール）は折りたたみ側に回す。
+  // 文章を読まずに数秒で遊び始められるよう、操作か目的だけを短く書く
+  oneLiner: string;
   rules: string[];
   minPlayers: number;
   maxPlayers: number;

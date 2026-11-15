@@ -78,3 +78,37 @@ export const schedule = (s: ReactionState): Scheduled<ReactionAction> =>
 
 // 終了判定（結果画面・共有の表示に使う）。'result' はラウンドごとの結果で、まだ続く
 export const isOver = (s: ReactionState): boolean => s.phase === 'over';
+
+// ── 順位付け（表示用の純粋関数。View から呼ぶ） ──
+
+// ラウンド内の並び：タイムが速い順、続いてフライング・押し忘れ（同じ扱いの中は参加順のまま）
+const roundSortKey = (o: Outcome | undefined) => (typeof o === 'number' ? o : o === 'foul' ? 1e9 : 2e9);
+
+export type RoundRow = { id: string; outcome: Outcome | undefined; rank: number | null };
+
+// 今のラウンドの順位表。同タイムは同順位にする（1 位が 2 人いても両方「1 位」と言い合えるように）。
+// フライング・押し忘れは順位なし（null）で、タイムのある人の後ろに並べる
+export const roundRanking = (s: ReactionState): RoundRow[] => {
+  const cur = s.current;
+  const times = s.order.map((id) => cur[id]).filter((x): x is number => typeof x === 'number');
+  // Array.prototype.sort は安定ソートなので、同じキーの中は参加順のまま
+  return [...s.order]
+    .sort((a, b) => roundSortKey(cur[a]) - roundSortKey(cur[b]))
+    .map((id) => {
+      const o = cur[id];
+      const rank = typeof o === 'number' ? 1 + times.filter((x) => x < o).length : null;
+      return { id, outcome: o, rank };
+    });
+};
+
+// 今のラウンドの 1 位（同タイムなら複数）。全員ノーカウントなら空
+export const roundWinners = (s: ReactionState): string[] =>
+  roundRanking(s)
+    .filter((r) => r.rank === 1)
+    .map((r) => r.id);
+
+// 累計の順位（合計が少ない順。同点は参加順のまま）
+export const totalRanking = (s: ReactionState): string[] => {
+  const total = totals(s);
+  return [...s.order].sort((a, b) => total[a] - total[b]);
+};

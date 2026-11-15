@@ -8,7 +8,6 @@ import * as majority from '../games/majority/logic';
 import * as reaction from '../games/reaction/logic';
 import * as rush from '../games/rush/logic';
 import * as wordwolf from '../games/wordwolf/logic';
-import * as yubisuma from '../games/yubisuma/logic';
 
 const players = (ids: string[]) => ids.map((id) => ({ id, name: id.toUpperCase() }));
 const P3 = players(['a', 'b', 'c']);
@@ -114,19 +113,7 @@ describe('ワードウルフ：投票とお題', () => {
   });
 });
 
-describe('指スマ・多数決：範囲外の値', () => {
-  it('指スマ：持っている手より多い親指・範囲外のコール・NaN は捨てる', () => {
-    const s = yubisuma.init(P3);
-    const caller = s.caller;
-    const other = s.order.find((id) => id !== caller)!;
-    expect(yubisuma.reduce(s, { type: 'choose', thumbs: 3 }, other, 1)).toBe(s);
-    expect(yubisuma.reduce(s, { type: 'choose', thumbs: -1 }, other, 1)).toBe(s);
-    expect(yubisuma.reduce(s, { type: 'choose', thumbs: NaN }, other, 1)).toBe(s);
-    expect(yubisuma.reduce(s, { type: 'choose', thumbs: 1, call: 7 }, caller, 1)).toBe(s);
-    expect(yubisuma.reduce(s, { type: 'choose', thumbs: 1 }, caller, 1)).toBe(s);
-    expect(yubisuma.reduce(s, { type: 'next' }, other, 1)).toBe(s);
-  });
-
+describe('多数決：範囲外の値', () => {
   it('多数決：a / b 以外の選択・参加者以外・next の偽装は捨てる', () => {
     const s = majority.init(P3, 0);
     expect(majority.reduce(s, { type: 'answer', choice: 'c' as 'a' }, 'a', 1)).toBe(s);
