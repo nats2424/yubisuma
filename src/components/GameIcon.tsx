@@ -40,13 +40,6 @@ const ICONS: Record<string, ReactNode> = {
       <path {...ln} d="M24 8 L28 18 L39 15 L31 24 L39 33 L28 30 L24 40 L20 30 L9 33 L17 24 L9 15 L20 18 Z" fill="#fff" />
     </>
   ),
-  yubisuma: (
-    <>
-      <Disc fill="#ff9cc2" />
-      <path {...ln} d="M17 22 H21 L24 11 Q28 11 28 16 L27 21 H34 Q37 22 35 26 L33 35 Q32 37 29 37 H17 Z" fill="#fff" />
-      <path {...ln} d="M12 22 H17 V37 H12 Z" fill="#fff" />
-    </>
-  ),
   daifugo: (
     <>
       <Disc fill="#4a74f5" />

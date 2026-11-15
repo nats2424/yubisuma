@@ -3,7 +3,6 @@ import { GAMES } from '../games/registry';
 import * as majority from '../games/majority/logic';
 import * as reaction from '../games/reaction/logic';
 import * as wordwolf from '../games/wordwolf/logic';
-import * as yubisuma from '../games/yubisuma/logic';
 import type { GameDef } from '../games/types';
 import {
   acceptAction,
@@ -57,37 +56,6 @@ describe('room', () => {
     const taken = takeOverHost(s, 'b', 0);
     const staleButBusy = { ...s, version: s.version + 50 };
     expect(compareStates(taken, staleButBusy)).toBeGreaterThan(0);
-  });
-});
-
-describe('yubisuma', () => {
-  it('caller who hits lowers a hand; finishes when both down', () => {
-    let s = yubisuma.init(P.slice(0, 2));
-    s = { ...s, caller: 'a' };
-    s = yubisuma.reduce(s, { type: 'choose', thumbs: 1, call: 3 }, 'a', 0);
-    expect(s.phase).toBe('choose');
-    s = yubisuma.reduce(s, { type: 'choose', thumbs: 2 }, 'b', 0);
-    expect(s.phase).toBe('reveal');
-    expect(s.last?.hit).toBe(true);
-    expect(s.hands.a).toBe(1);
-    s = yubisuma.reduce(s, { type: 'next' }, 'system', 0);
-    expect(s.caller).toBe('b');
-    expect(yubisuma.maxCall(s)).toBe(3);
-  });
-
-  it('rejects invalid thumbs', () => {
-    const s = yubisuma.init(P);
-    const notCaller = s.order.find((id) => id !== s.caller)!;
-    expect(yubisuma.reduce(s, { type: 'choose', thumbs: 3 }, notCaller, 0)).toBe(s);
-  });
-
-  it('game ends with one player left', () => {
-    let s = yubisuma.init(P.slice(0, 2));
-    s = { ...s, caller: 'a', hands: { a: 1, b: 2 } };
-    s = yubisuma.reduce(s, { type: 'choose', thumbs: 0, call: 0 }, 'a', 0);
-    s = yubisuma.reduce(s, { type: 'choose', thumbs: 0 }, 'b', 0);
-    expect(s.phase).toBe('over');
-    expect(s.finished).toEqual(['a']);
   });
 });
 
@@ -260,6 +228,7 @@ describe('ホストの保護（AC-04・20・21）', () => {
     name: 'boom',
     emoji: '',
     tagline: '',
+    oneLiner: '',
     rules: [],
     minPlayers: 1,
     maxPlayers: 10,
