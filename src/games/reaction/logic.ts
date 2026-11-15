@@ -2,9 +2,9 @@ import type { GamePlayer, Scheduled } from '../types';
 
 export const ROUNDS = 5;
 export const PENALTY_MS = 1000;
-const READY_MS = 2000;
+const READY_MS = 2500;
 const GO_TIMEOUT_MS = 3000;
-const RESULT_MS = 3000;
+const RESULT_MS = 5500;
 // これより速い反応は見てから押していないとみなしてフライング
 export const MIN_HUMAN_MS = 100;
 
