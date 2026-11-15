@@ -5,8 +5,12 @@
 <title>SUKIMA OGP 画像（1200×630）</title>
 <!--
   OGP 画像の元ファイル（J-01）。design/ogp/render.mjs で 1200×630・deviceScaleFactor 1 で撮る。
-  正方形に切り抜かれても成立するよう、ロゴ・コピー・特徴チップは中央 630×630（x=285〜915）に収め、
+  正方形に切り抜かれても成立するよう、ロゴ・コピー・ゲーム名の札は中央 630×630（x=285〜915）に収め、
   左右の飾り（テーブルを囲むスマホ・吹き出し・ステッカー）は切れても主旨が欠けないものだけにする。
+  1200×630 のときは飾りも全部見えるよう、左の絵は左余白（0〜285）の内側に収める（PO の指摘 2026-11-15）。
+  ゲーム名は小さいプレビューで読めるよう 3 つに絞る（指スマは PO の意向で載せない。2026-11-15）。
+  よく知られていて名前だけで遊び方が浮かぶもの（ワードウルフ・大富豪・反射神経バトル）を選び、「など5種類」で残りがあることを伝える。
+  ミニゲームラッシュは造語で名前から中身が浮かびにくく、多数派ゲームは一般にはまだ知られていないため外した。
   場面は D-25（2026-11-15）の「集まっているときのスキマ時間（対面）」。通話の要素は入れない。
   トークンは案B「ポップ・ステッカー」（src/styles.css）のライト配色。小さいプレビューでも明るく目立つため。
 -->
@@ -41,24 +45,28 @@ svg { display: block; }
 
 /* 中央 630×630 の安全域 */
 .safe { position: absolute; left: 285px; top: 0; width: 630px; height: 630px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; }
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; }
 
-.logo { display: inline-block; font-family: var(--font-pop); font-size: 78px; line-height: 1; letter-spacing: 0.06em;
+.logo { display: inline-block; font-family: var(--font-pop); font-size: 72px; line-height: 1; letter-spacing: 0.06em;
   color: #fff; background: var(--accent); padding: 18px 28px 22px; border: 6px solid var(--line); border-radius: 30px;
   transform: rotate(-3deg); box-shadow: 9px 9px 0 var(--line); -webkit-text-stroke: 3.5px var(--line); paint-order: stroke fill;
   overflow: hidden; white-space: nowrap; }
 .logo .slit { display: inline-block; width: 20px; height: 1.6em; margin: -0.4em 5px -0.4em 8px; vertical-align: middle;
   background: var(--bg); border-left: 5px solid var(--line); border-right: 5px solid var(--line); transform: rotate(14deg); }
 
-.copy { margin: 0; text-align: center; font-weight: 900; line-height: 1.22; font-size: 62px; letter-spacing: 0.01em; }
+.copy { margin: 0; text-align: center; font-weight: 900; line-height: 1.2; font-size: 58px; letter-spacing: 0.01em; }
 .copy .mark { background: linear-gradient(transparent 58%, var(--yellow) 58%, var(--yellow) 92%, transparent 92%); padding: 0 4px; }
 
-.chips { display: flex; gap: 9px; }
-.chip { font-weight: 900; font-size: 23px; line-height: 1; padding: 12px 14px 14px; background: var(--surface);
-  border: 5px solid var(--line); border-radius: 999px; box-shadow: 5px 5px 0 var(--line); white-space: nowrap; }
-.chip.y { background: var(--yellow); }
-.chip.p { background: var(--pink); }
-.chip.t { background: var(--teal); }
+.games { display: flex; gap: 12px; align-items: center; }
+/* ゲーム名はトランプの札のように少しずつ傾けて並べる（「いくつか選べる」感じを出す） */
+.card { font-weight: 900; font-size: 28px; line-height: 1; padding: 16px 16px 18px; background: var(--surface);
+  border: 5px solid var(--line); border-radius: 14px; box-shadow: 5px 5px 0 var(--line); white-space: nowrap; }
+.card:nth-child(1) { background: var(--pink); transform: rotate(-4deg); }
+.card:nth-child(2) { background: var(--yellow); transform: rotate(2deg); }
+.card:nth-child(3) { background: var(--teal); transform: rotate(-2deg); }
+.sub { margin: 0; font-weight: 900; font-size: 26px; line-height: 1; white-space: nowrap; }
+.sub .more { color: var(--accent); }
+.sub .sep { display: inline-block; margin: 0 12px; opacity: 0.35; }
 
 /* 左右の飾り（正方形に切られたら見えなくてよい） */
 .deco { position: absolute; }
@@ -73,9 +81,9 @@ svg { display: block; }
 <div class="canvas">
 
   <!-- 左：テーブルを上から見た絵。囲んだ 4 台のスマホが同じゲーム画面を出している＝同じ場所にいる複数人。
-       左端で切れても「テーブルを囲んで何台か」は残るよう、スマホは右半分にも配る -->
-  <div class="deco" style="left:-70px; top:150px;">
-    <svg width="340" height="340" viewBox="0 0 340 340">
+       1200×630 で左端に切れないよう、左余白（0〜285）の内側に縮めて置く -->
+  <div class="deco" style="left:22px; top:196px;">
+    <svg width="246" height="246" viewBox="0 0 340 340">
       <!-- テーブル -->
       <circle cx="176" cy="176" r="150" fill="#1c1a17" />
       <circle cx="170" cy="170" r="150" fill="#ffe2b0" class="ln" />
@@ -103,7 +111,7 @@ svg { display: block; }
   </div>
   <div class="bubble" style="left:40px; top:60px; transform: rotate(-5deg); background: var(--yellow);">待ってる間に</div>
   <div class="bubble" style="left:92px; top:120px; transform: rotate(4deg);">1回やろ！</div>
-  <div class="bubble" style="left:34px; top:512px; transform: rotate(-3deg); background: var(--pink);">もう1回！</div>
+  <div class="bubble" style="left:44px; top:478px; transform: rotate(-3deg); background: var(--pink);">もう1回！</div>
 
   <!-- 右上：手が空いたときの気軽さ（中央のコピーと重ならない言い方。切れても困らない） -->
   <div class="solo" style="left:966px; top:70px; transform: rotate(9deg);">手が<br>空いたら<br>1ゲーム</div>
@@ -125,11 +133,12 @@ svg { display: block; }
   <div class="safe">
     <span class="logo">SUKI<i class="slit"></i>MA</span>
     <p class="copy">スキマ時間に<br><span class="mark">みんなでサクッと</span></p>
-    <div class="chips">
-      <span class="chip p">URLをタップ</span>
-      <span class="chip y">登録なし</span>
-      <span class="chip t">ルールは見ればわかる</span>
+    <div class="games">
+      <span class="card">ワードウルフ</span>
+      <span class="card">大富豪</span>
+      <span class="card">反射神経バトル</span>
     </div>
+    <p class="sub"><span class="more">など5種類</span><span class="sep">｜</span>登録なし・QRでもURLでも参加</p>
   </div>
 </div>
 </body>
