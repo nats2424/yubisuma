@@ -984,6 +984,115 @@ input:focus {
   text-align: center;
 }
 
+/* 招待カードの中身。スマホでは QR を上に大きく、広い画面では QR を左・URL とボタンを右に並べる */
+.invite-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.invite-text {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.invite-qr {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 360px でもカメラで読める大きさ（目安 180px 以上）。余白は SVG の中に 4 セル分ある */
+.invite-qr .qr {
+  width: min(220px, 70vw);
+}
+
+.invite-qr figcaption,
+.qr-caption {
+  font-weight: 900;
+  font-size: 15px;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .invite-body {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .invite-qr .qr {
+    width: 240px;
+  }
+}
+
+/* QR は常に白地に黒（ダークテーマでも反転しない）。枠線は墨で、白い余白と背景の境目を分かるようにする */
+.qr {
+  display: block;
+  aspect-ratio: 1;
+  height: auto;
+  background: #fff;
+  border: var(--stroke) solid var(--ink);
+  border-radius: 10px;
+}
+
+.qr-btn {
+  gap: 6px;
+}
+
+.qr-glyph {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.qr-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(0 0 0 / 0.6);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.qr-dialog {
+  background: var(--surface);
+  color: var(--text);
+  border: var(--stroke) solid var(--line);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: min(100%, 400px);
+  animation: sheet-up 0.2s ease-out;
+}
+
+/* モーダルは QR を見せるためだけのものなので、画面に収まる範囲でできるだけ大きく出す */
+.qr-dialog .qr {
+  width: min(100%, 340px, 60dvh);
+}
+
+.qr-dialog p {
+  margin: 0;
+}
+
+.qr-code-line .mono {
+  font-size: 18px;
+  color: var(--text);
+}
+
+.qr-dialog .btn {
+  width: 100%;
+}
+
 .selected-panel {
   order: 1;
 }
