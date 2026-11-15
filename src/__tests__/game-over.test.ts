@@ -13,7 +13,6 @@ const PHASES: Record<string, { over: string; ongoing: string[] }> = {
   majority: { over: 'over', ongoing: ['answer', 'reveal'] },
   reaction: { over: 'over', ongoing: ['ready', 'wait', 'go', 'result'] },
   rush: { over: 'over', ongoing: ['play', 'result'] },
-  yubisuma: { over: 'over', ongoing: ['choose', 'reveal'] },
   daifugo: { over: 'over', ongoing: ['exchange', 'play', 'roundEnd'] },
 };
 
@@ -49,8 +48,8 @@ describe('GameDef.isOver', () => {
 
 describe('share の文面', () => {
   it('inviteText：ゲーム名ありは 3 行', () => {
-    expect(inviteText('ABCD', '指スマ')).toBe(
-      'SUKIMA で遊ぼう！タップするだけで参加（登録不要）\nゲーム：指スマ\n部屋コード：ABCD',
+    expect(inviteText('ABCD', 'ワードウルフ')).toBe(
+      'SUKIMA で遊ぼう！タップするだけで参加（登録不要）\nゲーム：ワードウルフ\n部屋コード：ABCD',
     );
   });
 
