@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { goHome, goRoom } from '../App';
 import { CATEGORIES, GAMES, gamesIn } from '../games/registry';
+import { canPlayWith, playersShort, sortGamesForPlayers } from '../games/order';
 import { CATEGORY_INFO, resolveOptions, type GameDef } from '../games/types';
 import { getPlayerId, getSavedName, NAME_MAX, saveName } from '../lib/identity';
 import { isOnlineMode } from '../lib/transport';
@@ -466,13 +467,20 @@ function GameCrashed({ onRetry, onLobby }: { onRetry: () => void; onLobby?: () =
 // ヘッダーは 320px で既に 1 行ぎりぎり（QA-BUG-08）なので、メンバー欄の見出しに置く
 function QrButton({ code }: { code: string }) {
   const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  // 閉じたらフォーカスを開いたボタンへ戻す（キーボード・読み上げで操作している人が迷子にならないように）。
+  // useCallback にして、モーダル側の Esc のリスナーが再描画のたびに付け直されないようにする
+  const close = useCallback(() => {
+    setOpen(false);
+    buttonRef.current?.focus();
+  }, []);
   return (
     <>
-      <button className="btn small ghost qr-btn" onClick={() => setOpen(true)} aria-haspopup="dialog">
+      <button ref={buttonRef} className="btn small ghost qr-btn" onClick={() => setOpen(true)} aria-haspopup="dialog">
         <QrGlyph />
         QRを表示
       </button>
-      {open && <QrDialog url={roomUrl(code)} code={code} onClose={() => setOpen(false)} />}
+      {open && <QrDialog url={roomUrl(code)} code={code} onClose={close} />}
     </>
   );
 }
@@ -485,6 +493,14 @@ function QrDialog({ url, code, onClose }: { url: string; code: string; onClose: 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+  // 表示中は背景をスクロールさせない（スマホで QR を見せている間に下のロビーが動かないように）。閉じたら元に戻す
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
   return (
     <div className="qr-backdrop" onClick={onClose}>
       <div className="qr-dialog" role="dialog" aria-modal="true" aria-label="招待のQRコード" onClick={(e) => e.stopPropagation()}>
@@ -572,7 +588,8 @@ function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
   const selected = findGame(state.selectedGame);
   // ホストしかいない間は、次にやることが「招待」だけなので大きく出す（J-02）。
   // 2 人以上になったら消し、招待はヘッダーの小さい「招待する」に任せる
-  const alone = isHost && onlineCount(state, online) <= 1;
+  const count = onlineCount(state, online);
+  const alone = isHost && count <= 1;
 
   return (
     // スマホでは「次に遊ぶゲーム → メンバー → ゲームを選ぶ」の順に並べる（CSS の order）。
@@ -587,20 +604,27 @@ function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
               <span className="muted"> {CATEGORY_INFO[cat].description}</span>
             </p>
             <div className="game-picker">
-              {gamesIn(cat).map((g) => (
-                <button
-                  key={g.id}
-                  className={`game-option${g.id === state.selectedGame ? ' selected' : ''}`}
-                  disabled={!isHost}
-                  onClick={() => dispatch({ type: 'selectGame', gameId: g.id })}
-                >
-                  <GameIcon id={g.id} emoji={g.emoji} size={34} />
-                  <span className="game-name">{g.name}</span>
-                  <span className="game-meta">
-                    {g.minPlayers}〜{g.maxPlayers}人 · {g.minutes}
-                  </span>
-                </button>
-              ))}
+              {/* 今の人数で遊べるゲームを先に並べる（J-07）。遊べないものも選べる（人が来るのを待ってから始められる） */}
+              {sortGamesForPlayers(gamesIn(cat), count).map((g) => {
+                const playable = canPlayWith(g, count);
+                const short = playersShort(g, count);
+                return (
+                  <button
+                    key={g.id}
+                    className={`game-option${g.id === state.selectedGame ? ' selected' : ''}${playable ? '' : ' unplayable'}`}
+                    disabled={!isHost}
+                    onClick={() => dispatch({ type: 'selectGame', gameId: g.id })}
+                  >
+                    <GameIcon id={g.id} emoji={g.emoji} size={34} />
+                    <span className="game-name">{g.name}</span>
+                    <span className="game-meta">
+                      {g.minPlayers}〜{g.maxPlayers}人 · {g.minutes}
+                    </span>
+                    {/* 遊べない理由は色ではなく文言で示す（足りない／多すぎる） */}
+                    {!playable && <span className="game-need">{short > 0 ? `あと${short}人` : `${g.maxPlayers}人まで`}</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -630,11 +654,13 @@ function SelectedGame({ room, state, selected }: { room: RoomHandle; state: Room
           <p className="lead-sm">{selected.tagline}</p>
         </div>
       </div>
-      <ol className="rules">
-        {selected.rules.map((r) => (
-          <li key={r}>{r}</li>
-        ))}
-      </ol>
+      {/* 待っている前で長い説明を読ませないよう、ひと言だけを大きく出し、くわしいルールは折りたたむ（J-26）。
+          ゲームを選び直したら閉じた状態に戻す（key） */}
+      <p className="one-liner">{selected.oneLiner}</p>
+      <details key={selected.id} className="rules-more">
+        <summary>くわしいルール</summary>
+        <RuleList rules={selected.rules} />
+      </details>
       {selected.options?.map((opt) => (
         <div key={opt.key} className="option-row">
           <span className="label">{opt.label}</span>
@@ -703,7 +729,7 @@ function GameArea({ room, state }: { room: RoomHandle; state: RoomState }) {
           {def.name}
         </h1>
         <div className="row">
-          <button className="btn small ghost" onClick={() => setShowRules((v) => !v)}>
+          <button className="btn small ghost" onClick={() => setShowRules((v) => !v)} aria-expanded={showRules}>
             ルール
           </button>
           {/* 終わった後は結果の直下に大きいボタンを出すので、見出し横の小さいボタンはゲーム中だけにする */}
@@ -720,12 +746,11 @@ function GameArea({ room, state }: { room: RoomHandle; state: RoomState }) {
         </div>
       </div>
       {showRules && (
-        <Panel>
-          <ol className="rules">
-            {def.rules.map((r) => (
-              <li key={r}>{r}</li>
-            ))}
-          </ol>
+        // ゲーム中もまずひと言（何をすればいいか）を見せ、その下にくわしいルールを続ける（J-26）
+        <Panel className="rules-panel">
+          <p className="one-liner">{def.oneLiner}</p>
+          <p className="rules-heading">くわしいルール</p>
+          <RuleList rules={def.rules} />
         </Panel>
       )}
       {/* 新しいゲームが始まったら（startedAt が変わったら）境界も作り直し、前回の失敗表示を持ち越さない */}
@@ -742,6 +767,16 @@ function GameArea({ room, state }: { room: RoomHandle; state: RoomState }) {
       </ErrorBoundary>
       {over && <NextActions room={room} state={state} def={def} />}
     </div>
+  );
+}
+
+function RuleList({ rules }: { rules: string[] }) {
+  return (
+    <ol className="rules">
+      {rules.map((r) => (
+        <li key={r}>{r}</li>
+      ))}
+    </ol>
   );
 }
 
