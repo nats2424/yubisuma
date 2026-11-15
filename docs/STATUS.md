@@ -16,7 +16,8 @@
 
 ## 進行中
 - **D-25（2026-11-15）最優先は対面のスキマ時間**（通話しながらは将来、凝ったゲームを作るときに再検討）。PdM が 06・07・08 を改訂済み。新しい改善候補は 07 §4.2（J-26〜J-36）。PO 判断待ち D-45〜D-50
-- 作業ブランチにあり `main` 未反映：QR コード（J-27）、OGP 画像の改訂（対面向け、PO の確認待ち）、反射神経バトルのラウンド結果の表示と間隔（実装中）
+- `main` に反映済み：PR #3（QR コード J-27、OGP 対面版、反射神経のラウンド結果）、PR #4（指スマ削除 D-50、ひと言ルール J-26、人数で並べる J-07）。次の推奨は 09-review.md 末尾（README の所要時間、並びの入れ替わり抑制、UnknownGame の文言、反射神経のペナルティ行など）
+- 残る作業：J-23 最小計測（D-41、CTO・Security レビュー要）、07 の Should（J-28 見せる用の全画面表示など）、PdM の観察シート、marketing・sns-marketer の対面への合わせ直し
 - 他ロールへの依頼（PdM より）：marketing（10 の訴求を対面へ）、sns-marketer（動画形式②を対面の手元に）、designer（06 §5.10）、qa（J-15 対面の観点・J-36）、PdM（観察シート）
 - **公開**：手順書 `docs/dev/11-launch-guide.md` 完成。公開アドレス https://sukima-ee3.pages.dev/ 。PO が Supabase（無料・東京、Legacy の anon キー使用、Allow public access オン）を作成し、Cloudflare Pages で公開してトップが開けた（最初に誤って Workers で作り、Pages で作り直した）。**次は PO の実機確認（11 §3、AC-M1〜M4）**
 - **公開前の改善**：J-01（OGP 画像 `public/ogp.png`・タグ）・J-02〜J-06・README の Cloudflare 化を実装し、Reviewer が Approve（`docs/dev/09-review.md`）。推奨 1〜4・6 も対応済み（`GameDef.isOver` など）。**PR #2 で `main` にマージ済み（2026-11-14、Cloudflare が自動で再公開）**。残り：J-23 最小計測（D-41 の計測と合わせて、CTO・Security レビュー要）、推奨 5（独自ドメイン移行時の確認項目を 11 に追加）
