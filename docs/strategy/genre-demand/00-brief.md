@@ -23,3 +23,6 @@
 
 ## 流れ
 01 marketing のたたき台 → 02 pdm（PMF・場面との整合）と cto（作れる範囲・費用）のレビュー → 03 strategy-manager の批評 → 04 marketing の改訂 → 05 strategy-manager の最終案 → PO
+
+## 付録：外部の調査（Gemini など）に渡すプロンプト（2026-11-21）
+PO が Gemini で調べられるため、同じ問いを外部にも投げる。結果を受け取ったら `docs/strategy/genre-demand/research-gemini.md` に保存し、01 のたたき台の材料にする（数字は出典を確かめてから使う）。プロンプト本文はチャットで PO に渡したものと同じ。
