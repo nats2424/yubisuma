@@ -3,7 +3,7 @@
 新しいセッションで作業を再開するときは、このファイル → `docs/NORTH_STAR.md` → `docs/DECISIONS.md` → `CLAUDE.md` の順に読めば、会話の履歴なしで続きから始められる。
 オーケストレーターは、区切りのよいところでこのファイルを更新する。
 
-- 最終更新：2026-11-15（D-25 で最優先の場面を「対面のスキマ時間」に変更。QR コード・OGP 改訂・反射神経の改善を進行中）
+- 最終更新：2026-11-22（最小計測を main に反映。PO の Umami 登録待ち。ジャンルの需要の最終案を PO に提出）
 - 依頼の窓口：「Agent roles directory structure」セッション（オーケストレーター）に一本化。作業ブランチは `claude/agent-roles-directory-x2dzcl`
 - 旧セッション「マルチプレイミニゲームサイト」は使わない（中身は PR #1 で `main` に取り込み済み）
 
@@ -15,6 +15,10 @@
 - 組織の方向（`docs/NORTH_STAR.md`、PO 確認済み）：SUKIMA は 1 作品目で、最優先は SNS のフォロワーを増やすこと
 
 ## 進行中
+- **最小計測（J-23）**：PR #5 で main に反映（`VITE_UMAMI_WEBSITE_ID` 未設定なので送信なし）。PO が Umami に登録し Production に ID を入れたら開始（手順は 02 §14.7 の PO の手順）。送り先 gateway.umami.is・運営 Umami Software, Inc.（米国）は検索で確認済み。User-Agent の要件はブラウザ既定で足りるか、登録後の Realtime で確かめる
+- **ジャンルの需要**（`docs/strategy/genre-demand/` 05 完成）：PO 判断 D-58〜D-62。Gemini の調査結果（需要・YouTube 運用の 2 本のプロンプトを PO に渡し済み）待ち。届いたら 05 に追補、YouTube の方は marketing/sns/plan.md に反映
+- **SNS**：参考アカウント調査 `marketing/sns/research/2026-11-reference-accounts.md`、plan.md を対面向けに改訂。D-53 作り手の名義の名前が未定
+- 環境：公開サイト・公式情報を開ける作業環境「yubisuma」を作成済み（次のセッションで選ぶと使える）
 - **D-25（2026-11-15）最優先は対面のスキマ時間**（通話しながらは将来、凝ったゲームを作るときに再検討）。PdM が 06・07・08 を改訂済み。新しい改善候補は 07 §4.2（J-26〜J-36）。PO 判断待ち D-45〜D-50
 - `main` に反映済み：PR #3（QR コード J-27、OGP 対面版、反射神経のラウンド結果）、PR #4（指スマ削除 D-50、ひと言ルール J-26、人数で並べる J-07）。次の推奨は 09-review.md 末尾（README の所要時間、並びの入れ替わり抑制、UnknownGame の文言、反射神経のペナルティ行など）
 - 残る作業：J-23 最小計測（D-41、CTO・Security レビュー要）、07 の Should（J-28 見せる用の全画面表示など）、PdM の観察シート、marketing・sns-marketer の対面への合わせ直し
