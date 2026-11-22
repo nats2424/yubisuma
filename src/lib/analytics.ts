@@ -19,7 +19,7 @@ import {
   type InviteMethod,
   type MetricEvent,
 } from './metrics';
-import { browserLocal, browserSession, createEntryMarks, DAY_KEYS } from './metricsStore';
+import { browserLocal, browserSession, clearMetricsRecords, createEntryMarks, DAY_KEYS, gatedStore } from './metricsStore';
 import { isOnlineMode } from './transport';
 
 export type PayloadData = Record<string, string | number | boolean>;
@@ -326,7 +326,27 @@ const WEBSITE_ID = String(import.meta.env.VITE_UMAMI_WEBSITE_ID ?? '').trim();
 const PROD_HOST = String(import.meta.env.VITE_UMAMI_HOST ?? '').trim() || DEFAULT_PROD_HOST;
 
 const optOut = createOptOut(() => localStorage);
-export const setMetricsOptOut = (off: boolean): boolean => optOut.set(off);
+// 「送らない」に切り替えたら、それまでに置いた計測の記録（日付・部屋の記録・入口の印）を消す（R-15）。
+// 記録は送るイベントの区分けにしか使わないので、送らないと決めた人の端末に残す理由がない。
+// また、あとで「送る」に戻したとき、送らなかった期間をまたいだ古い日付で「久しぶり」などの区分けを作らないため。
+// 「送らない」の設定値そのもの（sukima:metrics:off）は残す（消すと次に開いたとき送る側に戻ってしまう）。
+// 「送る」に戻したときは何も消さない（消すものがない）
+export const setMetricsOptOut = (off: boolean): boolean => {
+  const saved = optOut.set(off);
+  if (off) {
+    try {
+      if (typeof localStorage !== 'undefined') clearMetricsRecords(localStorage);
+    } catch {
+      // ストレージが使えなくても切り替えは続ける
+    }
+    try {
+      if (typeof sessionStorage !== 'undefined') clearMetricsRecords(sessionStorage);
+    } catch {
+      // 同上
+    }
+  }
+  return saved;
+};
 export const isMetricsOptedOut = (): boolean => optOut.isOff();
 
 export const metricsAllowed = (): boolean =>
@@ -377,7 +397,11 @@ export const analytics: Analytics = createAnalytics({
 
 // ---- 画面（Client）から呼ぶ入口。どれも例外を投げず、送らない条件に当たれば何もしない ----
 
-export const entryMarks = createEntryMarks(browserSession);
+// 計測の記録を書くストレージ。送らない条件に当たる端末では書き込まない（R-15）
+export const metricsLocal = gatedStore(browserLocal, metricsAllowed);
+export const metricsSession = gatedStore(browserSession, metricsAllowed);
+
+export const entryMarks = createEntryMarks(metricsSession);
 
 const currentHash = (): string => {
   try {
@@ -428,7 +452,7 @@ export const trackInviteShare = (method: InviteMethod, n: number): void => {
 // ひとり用の 1 回の挑戦が終わったとき。cleared はクリアしたステージ数、best は自己ベストを更新したか（M-C5）
 export const trackPracticeOver = (cleared: number, best: boolean, now: number = Date.now()): void => {
   try {
-    browserLocal.set(DAY_KEYS.practice, dayString(now));
+    metricsLocal.set(DAY_KEYS.practice, dayString(now));
   } catch {
     // 保存できなくても続ける
   }

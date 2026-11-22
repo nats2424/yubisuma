@@ -3,8 +3,7 @@
 // 送信は useEffect の中だけで行う（描画中・reduce の中では送らない。R-3）
 import { useEffect, useRef } from 'react';
 import { GAME_ID_SET } from '../games/ids';
-import { analytics, entryMarks } from '../lib/analytics';
-import { browserLocal, browserSession } from '../lib/metricsStore';
+import { analytics, entryMarks, metricsLocal, metricsSession } from '../lib/analytics';
 import { createRoomMetrics, type RoomMetrics } from './roomMetrics';
 import type { RoomHandle } from './types';
 
@@ -18,8 +17,9 @@ export function useRoomMetrics(room: RoomHandle, opts: { create: boolean }): voi
       create,
       me,
       track: (e) => analytics.track(e, '/r'),
-      session: browserSession,
-      local: browserLocal,
+      // 送らない条件に当たる端末では書き込まないストレージ（R-15）
+      session: metricsSession,
+      local: metricsLocal,
       gameIds: GAME_ID_SET,
       src: () => entryMarks.src(),
       takeJoinVia: () => entryMarks.takeJoinVia(),
