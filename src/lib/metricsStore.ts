@@ -36,6 +36,50 @@ const wrap = (storage: () => Storage): MetricsStore => ({
 export const browserLocal: MetricsStore = wrap(() => localStorage);
 export const browserSession: MetricsStore = wrap(() => sessionStorage);
 
+// 送らない条件に当たる端末（「送らない」・本番以外のホスト・DNT・GPC・デモモード・開発中）では書き込まない（R-15）。
+// 記録は送るイベントの区分けを作るためだけのもので、送らない端末に置いておく理由がないため。
+// 読み出し・削除はそのまま通す（読むだけなら何も残らず、消すのは残さない方向なので安全）。
+// allowed が例外を投げたら「書かない」側に倒す
+export const gatedStore = (store: MetricsStore, allowed: () => boolean): MetricsStore => ({
+  get: (key) => store.get(key),
+  set: (key, value) => {
+    let ok = false;
+    try {
+      ok = allowed();
+    } catch {
+      ok = false;
+    }
+    if (ok) store.set(key, value);
+  },
+  remove: (key) => store.remove(key),
+});
+
+// 計測の記録のキーはすべてこの接頭辞で始まる（日付・部屋の記録・入口の印）。
+// 「送らない」の設定（sukima:metrics:off）はこの接頭辞に当たらない
+export const METRICS_KEY_PREFIX = 'sukima:m:';
+
+// 計測の記録を消す（「送らない」に切り替えたとき。R-15）。消すのは METRICS_KEY_PREFIX のキーだけで、
+// 「送らない」の設定やゲームの自己ベストなど他のキーには触らない。ストレージが使えなくても例外を出さない
+export const clearMetricsRecords = (storage: Pick<Storage, 'length' | 'key' | 'removeItem'>): void => {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < storage.length; i++) {
+      const k = storage.key(i);
+      if (k !== null && k.startsWith(METRICS_KEY_PREFIX)) keys.push(k);
+    }
+    // 走査しながら消すと添字がずれるので、集めてから消す
+    for (const k of keys) {
+      try {
+        storage.removeItem(k);
+      } catch {
+        // 1 つ消せなくても残りは消す
+      }
+    }
+  } catch {
+    // ストレージが使えない（プライベートモードなど）：消すものもない
+  }
+};
+
 // 「最後に〜した日」（localStorage）。日付だけを置き、端末を見分ける ID は作らない
 export const DAY_KEYS = {
   host: 'sukima:m:lastHost',
