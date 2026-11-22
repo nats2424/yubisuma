@@ -1,4 +1,5 @@
 import { pick, shuffle, type GameOptions, type GamePlayer, type Scheduled } from '../types';
+import { recordingScript } from '../random';
 import { WORD_PAIRS } from './words';
 
 export const TALK_MS = 3 * 60 * 1000;
@@ -21,12 +22,22 @@ export type WordWolfAction =
   | { type: 'toVote' }
   | { type: 'vote'; target: string };
 
+// お題の組を選ぶ。topic（録画の台本の 1 つ目）がお題データのどちらかの語と一致すれば、
+// その語を市民側にする（録画で狙った展開を作るため）。一致しなければふだんどおり乱数
+export const pickPair = (topic?: string): [string, string] => {
+  if (topic) {
+    const hit = WORD_PAIRS.find((p) => p.includes(topic));
+    if (hit) return hit[0] === topic ? [hit[0], hit[1]] : [hit[1], hit[0]];
+  }
+  const [a, b] = shuffle(pick(WORD_PAIRS));
+  return [a, b];
+};
+
 export const wolfCount = (n: number) => (n >= 6 ? 2 : 1);
 
 export const init = (players: GamePlayer[], now: number, options: GameOptions = {}): WordWolfState => {
   const order = players.map((p) => p.id);
-  const pair = shuffle(pick(WORD_PAIRS));
-  const [citizenWord, wolfWord] = pair;
+  const [citizenWord, wolfWord] = pickPair(recordingScript().topics[0]);
   const wolves = shuffle(order).slice(0, wolfCount(order.length));
   return {
     phase: 'talk',

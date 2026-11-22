@@ -4,7 +4,8 @@
 // ゲーム ID の一覧は呼び出し側が gameIds として渡す
 import type { RoomState } from '../room/logic';
 
-export type Src = 'stream' | 'x' | 'tiktok' | 'guide' | 'none' | 'other';
+// yt-bio：YouTube のプロフィールのリンク、yt-long：YouTube の横長のまとめ動画の概要欄（marketing/sns/plan.md §7.1）
+export type Src = 'stream' | 'x' | 'tiktok' | 'guide' | 'yt-bio' | 'yt-long' | 'none' | 'other';
 export type WaitBucket = '0-1' | '1-3' | '3-5' | '5-10' | '10+';
 export type RehostBucket = '7d' | '28d' | 'no';
 export type StageBucket = '1-4' | '5-9' | '10-14' | '15+';
@@ -160,7 +161,7 @@ export const observeRoom = (
   return { tally: { ...t, games, peak, enjoyed, lastStartedAt: game.startedAt, startsSent }, events };
 };
 
-const SRC_ALLOWED: readonly Src[] = ['stream', 'x', 'tiktok', 'guide'];
+const SRC_ALLOWED: readonly Src[] = ['stream', 'x', 'tiktok', 'guide', 'yt-bio', 'yt-long'];
 
 const searchParams = (search: string): URLSearchParams | null => {
   try {

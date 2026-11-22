@@ -891,6 +891,18 @@ export type RoomHandle = {
 
 - テスト：`metrics.test.ts`（M-B1 ①〜⑨）、`analytics.test.ts`（M-B2 ①〜⑧、④ は疑似ネットワークの 4 人の部屋で 5 ゲーム・ホスト交代・再接続・リロード、M-B3 の配線）。
 
+### 13.3 録画モード（Backend 側。SNS の自動録画。marketing/sns/plan.md §2.1・10 §2.3）
+
+| 点 | 決めたこと | 理由 |
+| --- | --- | --- |
+| 乱数の入口 | ゲームの乱数（`shuffle`・`pick`・ミニゲームの選択と seed・反射神経の待ち時間）は `src/games/random.ts` の `random()` を通す。既定は呼ぶたびに `Math.random` を読む | 録画のときだけシード付き（mulberry32）に差し替えるため。既存テストの `vi.spyOn(Math, 'random')` もそのまま効く |
+| URL | `?rec=1&seed=<0〜4294967295>&topic=<語>&topic=<語>&micro=<id>,<id>&name=<名前>`（ハッシュの前）。`src/lib/recording.ts` の `parseRecording`・`startRecordingMode` | `topic` は複数可（区切り文字と衝突しない）。ワードウルフは 1 つ目がお題データの語と一致すれば市民側、多数派は問題文が一致したものを先頭から順に。`micro` は有効な ID だけ、ステージ順に繰り返す |
+| 本番では無効 | `online`（Supabase 設定あり）なら `parseRecording` も `applyRecording` も無効 | ホストが URL で展開を仕組めないようにする（二重の止め） |
+| 計測 | `MetricsEnv.recording`（省略可）を足し、`metricsAllowed` は `isRecordingMode` を渡す | 自動操作の録画を利用として数えない（デモモードはもともと送らないが、条件として明示） |
+| 印 | `Src` に `yt-bio`・`yt-long` を足した（`SRC_ALLOWED`・二段目の検査・`url` の形も） | YouTube のプロフィールのリンク・まとめ動画の概要欄（plan.md §7.1） |
+
+- テスト：`recording.test.ts`。
+
 ---
 
 ## 14. 需要を測る最小限の計測（J-23。D-11・D-12・D-41）

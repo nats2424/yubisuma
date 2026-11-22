@@ -20,6 +20,7 @@ import {
   type MetricEvent,
 } from './metrics';
 import { browserLocal, browserSession, clearMetricsRecords, createEntryMarks, DAY_KEYS, gatedStore } from './metricsStore';
+import { isRecordingMode } from './recording';
 import { isOnlineMode } from './transport';
 
 export type PayloadData = Record<string, string | number | boolean>;
@@ -86,7 +87,7 @@ type Schema = { required: Record<string, Check>; optional?: Record<string, Check
 const SCHEMAS: Record<MetricEvent['name'], Schema> = {
   room_create: {
     required: {
-      src: oneOf('stream', 'x', 'tiktok', 'guide', 'none', 'other'),
+      src: oneOf('stream', 'x', 'tiktok', 'guide', 'yt-bio', 'yt-long', 'none', 'other'),
       rehost: oneOf('7d', '28d', 'no'),
       was_guest: bool,
       after_practice: bool,
@@ -131,7 +132,7 @@ export const checkEvent = (e: unknown, gameIds: ReadonlySet<string>): { name: st
 };
 
 // url は '/'・'/practice'・'/r' と許可した印（?s=）だけ（部屋コードやハッシュを送らない）
-const URL_RE = /^\/(practice|r)?(\?s=(stream|x|tiktok|guide|other))?$/;
+const URL_RE = /^\/(practice|r)?(\?s=(stream|x|tiktok|guide|yt-bio|yt-long|other))?$/;
 export const isAllowedUrl = (url: unknown): url is string => typeof url === 'string' && URL_RE.test(url);
 
 // ---- 送信の部品 ----
@@ -253,6 +254,8 @@ export type MetricsEnv = {
   hostname: () => string; // 4. 実際の location.hostname
   optedOut: () => boolean; // 5. 「送らない」を選んだ
   doNotTrack: () => boolean; // 6. 「追跡しない」の設定
+  // 7. 録画モードの端末（自動操作の録画を利用として数えない）。省略は「録画モードでない」
+  recording?: () => boolean;
 };
 
 // どれか 1 つでも当たれば偽。例外も偽
@@ -265,6 +268,7 @@ export const metricsAllowedWith = (env: MetricsEnv): boolean => {
     if (!env.prodHost || env.hostname() !== env.prodHost) return false;
     if (env.optedOut()) return false;
     if (env.doNotTrack()) return false;
+    if (env.recording?.()) return false;
     return true;
   } catch {
     return false;
@@ -363,6 +367,7 @@ export const metricsAllowed = (): boolean =>
         () => (typeof navigator === 'undefined' ? undefined : navigator),
         () => (typeof window === 'undefined' ? undefined : window),
       ),
+    recording: isRecordingMode,
   });
 
 // 言語・画面の大きさは Umami の区分けに使われる。形の決まった短い値だけを送る

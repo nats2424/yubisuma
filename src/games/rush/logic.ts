@@ -46,7 +46,7 @@ export const init = (players: GamePlayer[], now: number, options: GameOptions = 
     order,
     stage: 1,
     phase: 'play',
-    round: startMicroRound(nextMicroId(), now, speedForStage(1), INTRO_MS),
+    round: startMicroRound(nextMicroId(undefined, TUNING, 1), now, speedForStage(1), INTRO_MS),
     startLives: lives,
     lives: Object.fromEntries(order.map((id) => [id, lives])),
     cleared: Object.fromEntries(order.map((id) => [id, 0])),
@@ -93,7 +93,7 @@ export const reduce = (s: RushState, a: RushAction, by: string, now: number): Ru
         ...s,
         stage,
         phase: 'play',
-        round: startMicroRound(nextMicroId(s.round.microId), now, speedForStage(stage), INTRO_MS),
+        round: startMicroRound(nextMicroId(s.round.microId, TUNING, stage), now, speedForStage(stage), INTRO_MS),
       };
     }
   }

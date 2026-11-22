@@ -1,6 +1,7 @@
 // 瞬間ミニゲーム（数秒で終わる小さなゲーム）の共通部分。
 // 各端末がローカルで遊び、結果（スコアと成否）だけをホストに送る。
 // 配置などの乱数は seed から生成するので、全員が同じ問題を遊ぶ。
+import { random, recordingScript, rng } from '../random';
 import { enabledMicroIds, speedForStage, TUNING, type MicroTuning, type Tuning } from './tuning';
 
 export type MicroResult = { score: number; success: boolean };
@@ -40,17 +41,8 @@ export const MICRO_META: MicroMeta[] = MICRO_TEXT.map((m) => {
 export const MICRO_IDS = MICRO_META.map((m) => m.id);
 export const microMeta = (id: string) => MICRO_META.find((m) => m.id === id) ?? MICRO_META[0];
 
-// シード付き乱数（mulberry32）
-export const rng = (seed: number) => {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-};
+// シード付き乱数（mulberry32）。実体は ../random.ts（録画モードの乱数と同じもの）
+export { rng };
 
 export const randInt = (r: () => number, min: number, max: number) => min + Math.floor(r() * (max - min + 1));
 
@@ -61,11 +53,18 @@ export const LIVES = TUNING.lives.default;
 // 何ステージ目か → スピード倍率（調整値は tuning.ts。既存の import のためにここからも公開する）
 export { speedForStage };
 
-// 直前と同じゲームが続かないように次のゲームを選ぶ。enabled: false のミニゲームは出さない
-export const nextMicroId = (prev?: string, t: Tuning = TUNING) => {
+// 直前と同じゲームが続かないように次のゲームを選ぶ。enabled: false のミニゲームは出さない。
+// stage（1 始まり）を渡すと、録画の台本（?micro=）があればその順に出す（台本の長さを超えたら先頭に戻る）。
+// 台本の中の無効な ID・enabled: false のものは飛ばしてふだんどおり選ぶ
+export const nextMicroId = (prev?: string, t: Tuning = TUNING, stage?: number) => {
   const enabled = new Set(enabledMicroIds(t));
+  const planned = recordingScript().micro;
+  if (stage !== undefined && Number.isInteger(stage) && stage >= 1 && planned.length > 0) {
+    const id = planned[(stage - 1) % planned.length];
+    if (enabled.has(id)) return id;
+  }
   const pool = MICRO_IDS.filter((id) => id !== prev && enabled.has(id));
-  return pool[Math.floor(Math.random() * pool.length)];
+  return pool[Math.floor(random() * pool.length)];
 };
 
 export type MicroRound = {
@@ -83,7 +82,7 @@ export const startMicroRound = (microId: string, now: number, speed = 1, introMs
   const startAt = now + introMs;
   return {
     microId,
-    seed: Math.floor(Math.random() * 2 ** 31),
+    seed: Math.floor(random() * 2 ** 31),
     startAt,
     duration,
     // 通信遅延・時計のずれを吸収する猶予

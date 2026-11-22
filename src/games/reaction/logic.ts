@@ -1,3 +1,4 @@
+import { random } from '../random';
 import type { GamePlayer, Scheduled } from '../types';
 
 export const ROUNDS = 5;
@@ -46,7 +47,7 @@ export const reduce = (s: ReactionState, a: ReactionAction, by: string, now: num
     if (by !== 'system') return s;
     switch (s.phase) {
       case 'ready':
-        return { ...s, phase: 'wait', until: now + 1500 + Math.random() * 3000 };
+        return { ...s, phase: 'wait', until: now + 1500 + random() * 3000 };
       case 'wait':
         // 全員フライングしていたら即結果
         if (s.order.every((id) => id in s.current)) return finishRound(s, now);
