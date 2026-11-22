@@ -3282,3 +3282,12 @@ button.card {
 .privacy-dialog .panel-head h2 {
   font-size: 17px;
 }
+
+/* 「送るもの」の内訳。項目が多いので、360px でも 1 つずつ読めるよう箇条書きに分ける */
+.privacy-sublist {
+  margin: 4px 0 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: 4px;
+  list-style: circle;
+}
