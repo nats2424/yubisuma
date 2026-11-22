@@ -18,7 +18,7 @@
 <style>
 :root {
   --bg: #fff4e0; --ink: #1c1a17; --white: #ffffff;
-  --accent: #ff5b3a; --yellow: #ffd23f; --blue: #4a74f5; --pink: #ff9cc2; --teal: #2bb3a3;
+  --accent: #ff5b3a; --yellow: #ffd23f; --blue: #4a74f5; --pink: #ff9cc2; --teal: #2bb3a3; --purple: #9b7bf0;
   --dark-bg: #1d1a17;
   --font-body: 'Noto Sans JP', sans-serif;
   --font-pop: 'Dela Gothic One', 'Noto Sans JP', sans-serif;
@@ -79,9 +79,22 @@ svg { display: block; }
         <line x1="66" y1="134" x2="48" y2="152"/><line x1="66" y1="66" x2="48" y2="48"/>
       </g>
       <circle cx="100" cy="100" r="30" fill="var(--white)" stroke="var(--ink)" stroke-width="9"/>
-      <g fill="var(--accent)" stroke="var(--ink)" stroke-width="8" stroke-linejoin="round">
-        <rect x="88" y="26" width="24" height="24" rx="5"/><rect x="150" y="88" width="24" height="24" rx="5"/>
-        <rect x="88" y="150" width="24" height="24" rx="5"/><rect x="26" y="88" width="24" height="24" rx="5"/>
+      <!-- 札は 4 人それぞれ違う差し色にする（トマトは SUKIMA の色なので作り手では使わない。03 N-5）。
+           色が違うことで「いろんな人が集まる」も伝わる -->
+      <g stroke="var(--ink)" stroke-width="8" stroke-linejoin="round">
+        <rect x="88" y="26" width="24" height="24" rx="5" fill="var(--blue)"/><rect x="150" y="88" width="24" height="24" rx="5" fill="var(--pink)"/>
+        <rect x="88" y="150" width="24" height="24" rx="5" fill="var(--teal)"/><rect x="26" y="88" width="24" height="24" rx="5" fill="var(--purple)"/>
+      </g>
+    </g>
+    <!-- 4. PATTO（パッと）：真ん中で白い光が弾け、色の粒が飛ぶ。WATTO（囲む輪）と違い「中心から外へ」の形。
+         粒は 3 つで大きさも位置もそろえない（4 つ対称だと WATTO・太陽に寄るため）。切り替えに備えたラフ -->
+    <g id="m-patto">
+      <circle cx="100" cy="100" r="92" fill="var(--yellow)" stroke="var(--ink)" stroke-width="9"/>
+      <polygon points="100.0,40.0 112.6,69.5 142.4,57.6 130.5,87.4 160.0,100.0 130.5,112.6 142.4,142.4 112.6,130.5 100.0,160.0 87.4,130.5 57.6,142.4 69.5,112.6 40.0,100.0 69.5,87.4 57.6,57.6 87.4,69.5" fill="var(--white)" stroke="var(--ink)" stroke-width="9" stroke-linejoin="round"/>
+      <g stroke="var(--ink)" stroke-width="7">
+        <circle cx="164.7" cy="73.2" r="10" fill="var(--blue)"/>
+        <circle cx="73.2" cy="164.7" r="8" fill="var(--pink)"/>
+        <circle cx="37.2" cy="74.0" r="6.5" fill="var(--teal)"/>
       </g>
     </g>
     <!-- 3. わちゃ：重なった吹き出し 3 つ。「みんなが同時にしゃべっている」様子 -->
@@ -99,19 +112,24 @@ svg { display: block; }
 
 <div class="cards">
   <div class="card" id="card-niyari">
-    <svg class="mark" viewBox="-4 -4 216 216"><circle cx="108" cy="108" r="92" fill="var(--ink)"/><use href="#m-niyari"/></svg>
+    <svg class="mark" viewBox="-4 -4 216 216"><circle cx="108" cy="108" r="96.5" fill="var(--ink)"/><use href="#m-niyari"/></svg>
     <div class="name">ニヤリ製作所</div>
     <div class="sub">NIYARI WORKS</div>
   </div>
   <div class="card" id="card-watto">
-    <svg class="mark" viewBox="-4 -4 216 216"><circle cx="108" cy="108" r="92" fill="var(--ink)"/><use href="#m-watto"/></svg>
+    <svg class="mark" viewBox="-4 -4 216 216"><circle cx="108" cy="108" r="96.5" fill="var(--ink)"/><use href="#m-watto"/></svg>
     <div class="name">WATTO</div>
     <div class="sub">ワット</div>
   </div>
   <div class="card" id="card-wacha">
-    <svg class="mark" viewBox="-4 -4 216 216"><circle cx="108" cy="108" r="92" fill="var(--ink)"/><use href="#m-wacha"/></svg>
+    <svg class="mark" viewBox="-4 -4 216 216"><circle cx="108" cy="108" r="96.5" fill="var(--ink)"/><use href="#m-wacha"/></svg>
     <div class="name">わちゃ</div>
     <div class="sub">WACHA</div>
+  </div>
+  <div class="card" id="card-patto">
+    <svg class="mark" viewBox="-4 -4 216 216"><circle cx="108" cy="108" r="96.5" fill="var(--ink)"/><use href="#m-patto"/></svg>
+    <div class="name">PATTO</div>
+    <div class="sub">パッと</div>
   </div>
 </div>
 
@@ -120,6 +138,7 @@ svg { display: block; }
   <div class="head"><span></span><span>ライトの画面</span><span>ダークの画面</span></div>
   <div class="row" data-id="niyari"><span class="label">ニヤリ製作所</span></div>
   <div class="row" data-id="watto"><span class="label">WATTO</span></div>
+  <div class="row" data-id="patto"><span class="label">PATTO</span></div>
   <div class="row" data-id="wacha"><span class="label">わちゃ</span></div>
 
   <h2 style="margin-top:18px">SUKIMA と並べたとき（動画の締め・ヘッダーの想定）</h2>
@@ -127,6 +146,7 @@ svg { display: block; }
     <span class="logo">SUKI<span class="slit"></span>MA</span>
     <span class="by"><svg viewBox="0 0 200 200"><use href="#m-niyari"/></svg>ニヤリ製作所</span>
     <span class="by"><svg viewBox="0 0 200 200"><use href="#m-watto"/></svg>WATTO</span>
+    <span class="by"><svg viewBox="0 0 200 200"><use href="#m-patto"/></svg>PATTO</span>
     <span class="by"><svg viewBox="0 0 200 200"><use href="#m-wacha"/></svg>わちゃ</span>
   </div>
 </div>
