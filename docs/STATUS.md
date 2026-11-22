@@ -17,6 +17,8 @@
 ## 進行中
 - **最小計測（J-23）**：PR #5 で main に反映（`VITE_UMAMI_WEBSITE_ID` 未設定なので送信なし）。PO が Umami に登録し Production に ID を入れたら開始（手順は 02 §14.7 の PO の手順）。送り先 gateway.umami.is・運営 Umami Software, Inc.（米国）は検索で確認済み。User-Agent の要件はブラウザ既定で足りるか、登録後の Realtime で確かめる
 - **ジャンルの需要**（`docs/strategy/genre-demand/` 05 完成）：PO 判断 D-58〜D-62。Gemini の調査結果（需要・YouTube 運用の 2 本のプロンプトを PO に渡し済み）待ち。届いたら 05 に追補、YouTube の方は marketing/sns/plan.md に反映
+- **YouTube ショートの運用**：Gemini の調査を反映して plan.md §7 を新設（導線はプロフィールの 1 つ目のリンク＋関連動画の横長まとめ動画、量産型対策、PO の手間は SNS 全体で週 2 時間まで）。PO 判断 D-64〜D-66。**次の実装**：録画モード（ショート制作の前提）、計測の `?s=` 許可一覧に `yt-bio`・`yt-long`（今は stream・x・tiktok・guide のみ）
+- **需要の最終案に Gemini の追補**（競合 Qdan のワードウルフ公式ブラウザ版・BoardGameJoin）。D-63：見せ方の先頭をラッシュ・反射神経・多数派へ
 - **SNS**：参考アカウント調査 `marketing/sns/research/2026-11-reference-accounts.md`、plan.md を対面向けに改訂。D-53 作り手の名義の名前が未定
 - 環境：公開サイト・公式情報を開ける作業環境「yubisuma」を作成済み（次のセッションで選ぶと使える）
 - **D-25（2026-11-15）最優先は対面のスキマ時間**（通話しながらは将来、凝ったゲームを作るときに再検討）。PdM が 06・07・08 を改訂済み。新しい改善候補は 07 §4.2（J-26〜J-36）。PO 判断待ち D-45〜D-50
