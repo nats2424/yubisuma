@@ -46,9 +46,10 @@ describe('秘密情報', () => {
     }
   });
 
-  it('クライアントが読む環境変数は Supabase の URL・anon キーと VITE_BASE だけ。service_role や JWT を直書きしない', () => {
+  it('クライアントが読む環境変数は Supabase の URL・anon キー、計測の Website ID・本番のホスト名（公開してよい値）、Vite の DEV・MODE だけ。service_role や JWT を直書きしない', () => {
     const envNames = new Set(sources.flatMap(([, code]) => [...code.matchAll(/import\.meta\.env\.(\w+)/g)].map((m) => m[1])));
-    expect([...envNames].sort()).toEqual(['VITE_SUPABASE_ANON_KEY', 'VITE_SUPABASE_URL']);
+    // 計測（docs/dev/02 §14.5）：VITE_UMAMI_* は公開される値、DEV・MODE は「送らない条件」の判定に使う
+    expect([...envNames].sort()).toEqual(['DEV', 'MODE', 'VITE_SUPABASE_ANON_KEY', 'VITE_SUPABASE_URL', 'VITE_UMAMI_HOST', 'VITE_UMAMI_WEBSITE_ID']);
     expect(hits(/service_role|eyJhbGciOi|sb_secret_/)).toEqual([]);
   });
 });

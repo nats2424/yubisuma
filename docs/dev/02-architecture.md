@@ -875,6 +875,22 @@ export type RoomHandle = {
 
 - テスト：`review-fixes.test.ts`「R-01: …」「R-02: …」。
 
+### 13.2 最小計測の実装（Backend：M-B1〜M-B5。設計は §14）
+
+| 点 | 決めたこと | 理由 |
+| --- | --- | --- |
+| 置き場所 | `src/lib/metrics.ts`（純粋関数）・`src/lib/metricsStore.ts`（端末の中の日付・入口の印・部屋の記録のキー）・`src/lib/analytics.ts`（送信・送らない条件・Client 用の入口）・`src/room/roomMetrics.ts`（部屋の配線。React なし）・`src/room/useRoomMetrics.ts`（フック）・`src/games/ids.ts`（ゲーム ID の一覧） | フックの中身を React なしで疑似ネットワークに流して確かめるため。`ids.ts` は registry（View を読み込む）を計測から読まないため。registry と一致することはテストで確かめる |
+| `RoomTally` | §14.6 の型に `joined`（この部屋で `room_join` を送ったか）を足した。`createdAt` は「この端末が作って `room_create` を送った時刻」で、送ったかどうかの印を兼ねる | リロードで `room_create`・`room_join` を数え直さないため（sessionStorage に記録ごと置く） |
+| `AnalyticsDeps` | `version`（`data.v`）を足した。`v` は `package.json` を `import { version }` で読む（`vite.config.ts` の `define` は不要） | 設計どおり全イベントに `v` と `mode: 'online'` を付ける。ページ表示には付けない（Umami の pageview は data を持たない） |
+| 二段目の検査 | イベント名ごとに許可するキーと値の形を表で持ち、外れたら送らない。`url` は `/`・`/practice`・`/r` と `?s=<許可した値>` だけ、`referrer` は固定の URL か空だけ | `metrics.ts` に不具合があっても外に出ないため（R-4） |
+| 送り方 | `fetch` に `credentials: 'omit'`・`referrerPolicy: 'no-referrer'` を足した | Cookie を付けない。`?s=` が消える前の数百ミリ秒にページの URL を Referer で送らない【要確認：Umami が Referer なしの受信を受け付けるか。§14.10 の 2 と一緒に本番で 1 回確かめる】 |
+| 送らない設定 | `setMetricsOptOut(off)` は保存できたかを真偽で返す。このタブで選んだ値は保存の失敗・読み取りの例外より優先する | Client が「この端末では設定を保存できません」を出すため（R-2）。選んでいないときに読むと例外なら送らない側 |
+| 1 時間 60 件 | タブの中の変数で数える（リロードで 0 に戻る） | 目的は不具合による無限送信の止め。偽の状態への備えは部屋ごとの上限（`game_start` 30 件・`room_enjoyed` 1 回）を sessionStorage で持つ |
+| `room_error` | 同じフック（同じ画面）の中で種類ごとに 1 回 | 再試行で何度出ても数えない |
+| 環境変数 | `import.meta.env.VITE_UMAMI_WEBSITE_ID`・`VITE_UMAMI_HOST`・`DEV`・`MODE` を名前で読む。`vite-env.d.ts` は足していない（`vite/client` の型で通る。`transport.ts` と同じ書き方） | `security-static.test.ts` の「読む環境変数の一覧」を 4 つ足して更新した |
+
+- テスト：`metrics.test.ts`（M-B1 ①〜⑨）、`analytics.test.ts`（M-B2 ①〜⑧、④ は疑似ネットワークの 4 人の部屋で 5 ゲーム・ホスト交代・再接続・リロード、M-B3 の配線）。
+
 ---
 
 ## 14. 需要を測る最小限の計測（J-23。D-11・D-12・D-41）
