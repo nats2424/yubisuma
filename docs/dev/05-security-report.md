@@ -241,6 +241,7 @@
 | `src/__tests__/security-engine.test.ts` | 疑似ネットワークに攻撃者の Link をつないだ攻撃：ホスト ID の偽装、部外者・gameSystem・版違い・別コード、sync の連打、アクションの連打、R-02 の確認 | 5（+ skip 5：SEC-01 ×2・SEC-04・SEC-05・SEC-06） |
 | `src/__tests__/security-games.test.ts` | 各ゲームの不正な手・タイマー専用アクションの偽装・範囲外の値、R-04・R-05 の確認 | 14 |
 | `src/__tests__/security-static.test.ts` | HTML 文字列の API・eval・受信データ入りの href/src がないこと、`.gitignore`・`.env.example`・環境変数・鍵の直書き | 7 |
+| `src/__tests__/security-metrics.test.ts` | 最小計測（§8）：偽の状態で任意の値を送らせない（M-1）、漏えい、url・参照元の形（M-2）、本番以外・送らない条件（M-3・R-1・R-2）、失敗の握りつぶし・応答を読まない（R-3）、二段目の検査（R-4）、壊れたストレージ、静的（送り先 1 つ・純粋関数から呼ばない） | 15 |
 
 「許容リスクの確認」のテストは現状の挙動を記録したもの。対策を入れて挙動が変わったら、そのテストを書き換える。
 
@@ -318,3 +319,52 @@
 - **PdM・Marketing**：参照元の許可一覧（M-2）、説明文の言い回し（M-4・M-5）
 - **SNS Marketer**：録画・自動操作のスクリプトは `sukima:metrics:off` を立ててから本番を開く（M-3）
 - **Security（自分）**：実装の後に §8.4 のテストを書き、§14.8 の 2 回目のレビューを行う
+
+### 8.6 実装後レビュー（2026-11-22）
+
+- 対象：`37d8b0c`（Backend：`src/lib/metrics.ts`・`metricsStore.ts`・`analytics.ts`・`src/room/roomMetrics.ts`・`useRoomMetrics.ts`・`src/games/ids.ts`／Client：`src/main.tsx`・`App.tsx`・`components/Privacy.tsx`・Room/Home/Practice の呼び出し・`share.ts` の `roomUrl(code, { via: 'qr' })`）。02 §14.8 の 2 回目
+- テスト：§8.4 の 15 件を `src/__tests__/security-metrics.test.ts` に書いた。**15 件すべて通る（`it.skip` なし）**。送り先はすべて偽の `sink`、製品の送り先は `fetch` を数える関数に差し替えて 0 回。`npm run typecheck`・`npm test`（22 ファイル、316 件通過・2 件 skip は既存の票）・`npm run build` が通る
+- `security-static.test.ts` の環境変数の期待値（`DEV`・`MODE`・`VITE_UMAMI_HOST`・`VITE_UMAMI_WEBSITE_ID` を足したもの）は妥当。Website ID と本番のホスト名は公開してよい値で、`DEV`・`MODE` は送らない条件の判定だけに使っている。直していない
+- ビルドの確認：`dist/index.html` に Umami の `<script>` はない。送り先の URL は `dist/assets/*.js` の中で `analytics.ts` の定数 1 か所だけ
+- **判定：必須 1 件（説明文の 2 か所。数行の文言の修正）を直せば、計測を入れて公開してよい**。コードの側（送る値・送らない条件・失敗の扱い）は設計の M-1〜M-5 と R-1〜R-5・R-9・R-10 を満たしている
+
+#### 8.6.1 M-1〜M-5・R-1〜R-10 の確認
+
+| # | 結果 | 根拠（実装の場所・テスト） |
+| --- | --- | --- |
+| M-1 | 満たす | 一段目：engine が登録にないゲームの状態を採用しない（SEC-04 の対策、`engine.ts` 366 行）。二段目：`observeRoom` が `game.id` が一覧にない・人数が 1〜10 の整数でない状態を記録ごと無視（`metrics.ts` 138〜140 行）。三段目：`checkEvent` が `game` を一覧と 50 文字で、`n`・`peak` を整数の範囲で見る（`analytics.ts` 83・98・101 行）。偽の状態 500 回でも `game_start` は 30 件以下、`room_enjoyed` は 1 回 |
+| M-2 | 満たす | `referrerName` は一覧の名前か `other` か空、`https:` 以外は `other`、`evilgoogle.com`・`google.com.evil.example` は当たらない。送るのは固定の URL（`https://google.com` など・`https://other.invalid`）だけで、`pageview` 側でも `REFERRER_URLS` にない値は送らない |
+| M-3 | 満たす | `location.hostname` が `VITE_UMAMI_HOST`（既定 `sukima-ee3.pages.dev`）と完全一致のときだけ送る。payload の `hostname` は固定値。11 §2-4 に「Umami の値は Production だけ」が入った |
+| M-4 | 満たす（ただし §8.6.2 の M-6） | Umami が IP とブラウザの種類から訪問のまとまりと地域を出すこと、画面の大きさ・言語・ブラウザの種類を送ることが書かれている |
+| M-5 | 満たす | トップの下（`Home.tsx`）、部屋の画面（`Room.tsx` のメンバー欄の下）、ひとり用（挑戦中以外）にリンク。部屋・ひとり用はモーダルで開き、部屋を抜けない。目的・送り先（Umami Software, Inc.【要確認】）・送るもの・「送らない」がそろっている |
+| R-1 | 満たす | `doNotTrackWith`：`navigator.doNotTrack`・`window.doNotTrack` の `'1'`/`'yes'`、GPC、`navigator` が無い・例外は送らない側。送るたびに判定 |
+| R-2 | 満たす | `createOptOut`：保存に失敗してもタブの中で保つ、`'1'`・`'0'`・なし以外は送らない側、読めないときも送らない側。画面は保存失敗を伝える（`Privacy.tsx` 54 行） |
+| R-3 | 満たす | `try` と `Promise` の両方で握りつぶす。応答は読まず、次の送信の中身は変わらない。`credentials: 'omit'`・`referrerPolicy: 'no-referrer'`。部屋の送信は `useEffect` の中、その他は操作・タイマーの後 |
+| R-4 | 満たす | `checkEvent` は表にないキー・型の違う値・`__proto__` などの名前を捨て、知っているキーだけで作り直す |
+| R-5 | 満たす | 1 部屋の `game_start` 30 件（sessionStorage の記録）、`room_enjoyed` 1 回、1 タブ 1 時間 60 件 |
+| R-6 | 未着手（推奨のまま） | `public/_headers` はまだない。CSP を入れるときに `connect-src` に `https://gateway.umami.is` を足す |
+| R-7・R-8 | PO の運用 | コードの対象外。§8.6.3 に再掲 |
+| R-9 | 満たす | `routePath('#/privacy…')` は `null` で、ページ表示を送らない |
+| R-10 | 満たす | `?via=qr` は QR（招待カードと QR のモーダル）の URL だけ。コピー・共有の URL には付けない。`main.tsx` が起動時に `?s=`・`?via=` を読んでから `history.replaceState` で消す |
+
+§14.8 の 4「他の端末から届くメッセージで送信を起こせる経路が、状態の変化（ゲーム開始）だけ」：`roomMetrics.ts` で受信した状態から作るのは `game_start`・`room_enjoyed`（と、自分がメンバーに入ったときの `room_join`・自分の作った部屋の `room_create` の各 1 回）だけで、上限は上の R-5 のとおり。偽の状態で被害者の端末に送らせられるのは「登録済みのゲーム名・1〜10 人」の範囲の数字の水増しだけ（許容リスク R-09 のまま）。
+
+#### 8.6.2 必須（公開の前に直す）
+
+| # | 問題 | 場所 | 直し方 | 担当 |
+| --- | --- | --- | --- | --- |
+| M-6 | **説明文の「端末に保存するもの」と「送るもの」が実装より狭い**。① 「この端末の中に、最後に遊んだ日付と『送らない』の設定**だけ**を保存します」とあるが、実際は `sessionStorage` にも、部屋ごとの記録（部屋コードをキーに、遊んだ回数・最大人数・ゲーム開始の時刻（ミリ秒）・送った件数）と入口の印（`?s=`・`?via=`）を置く（`metricsStore.ts` 48〜52 行、`roomMetrics.ts` 88〜91 行）。② 「日付は送りません」は正しいが、日付から作った区分け（7 日／28 日以内に部屋を作ったか・前にゲストで入ったことがあるか・7 日以内にひとり用を遊んだか：`room_create` の `rehost`・`was_guest`・`after_practice`）は送る。「送るもの」にこれと、入り方（QR・コード・リンク）、接続できなかったときの種類、ひとり用で進んだステージの区分け、アプリの版が書かれていない（「などの出来事」に含まれると読めなくはないが、端末に保存した値から作る区分けは利用者が気にする点）。③ 「送らないもの：遊んだ内容」は、ひとり用のステージの区分けと自己ベストを更新したかを送るので、読み手によっては食い違う | `src/components/Privacy.tsx` 25〜26 行・28 行・35 行 | ① 35 行を「この端末の中に、最後に部屋を作った・参加した・ひとり用を遊んだ日付と『送らない』の設定を保存します。また、このタブを閉じるまで、部屋ごとの遊んだ回数・人数と、どこから来たかの印を保存します（どれもそのものは送りません）」に。② 25〜26 行の送るものに「前に遊んだことがあるか（7 日以内など）の区分け、入り方（QR・コード・リンク）、ひとり用で進んだステージの区分け、アプリの版」を足す。③ 28 行の「遊んだ内容」を「ゲームの中の手・答え・得点」に。言い回しは PdM・Marketing と合わせてよいが、**「だけ」と書くなら実装と一致させる**こと | Client（文言は PdM） |
+
+#### 8.6.3 推奨
+
+| # | 内容 | 担当 |
+| --- | --- | --- |
+| R-15 | **「送らない」を選んだ端末・送らない条件に当たる端末でも、計測のためだけの日付と部屋の記録を保存している**（`roomMetrics.ts` 132・139 行の `local.set`、149 行の `save`、`analytics.ts` 431 行の `trackPracticeOver`）。説明文の約束（送らない）には反しないが、R-11（EU の規則）を A で受け入れる根拠が「送らないを選べる」なので、選んだ人の端末には何も書かない方が筋がよい。`metricsAllowed()` が偽のときは `local.set`・`session.set` をしない（読み出しはしてよい）。デモモード・開発中にも書かなくなる | Backend |
+| R-6 | CSP（`public/_headers`）を入れるときは `connect-src` に `https://gateway.umami.is` を足し、`script-src` には足さない。`Referrer-Policy: strict-origin-when-cross-origin` を明示する（§8.2 のまま） | Client |
+| R-16 | 送り先の会社名（`Privacy.tsx` 29 行「Umami Software, Inc.」）と送り先の URL（`analytics.ts` 62 行、`gateway.umami.is` か `cloud.umami.is` か）は【要確認】のまま。Umami に登録したとき、規約・管理画面の記載で確かめて直す（02 §14.10 の 2・8）。送り先を変えるときは `security-metrics.test.ts` の定数の確認も直す | PO（確認）→ Client・Backend |
+| R-7・R-8 | PO の Umami アカウントは 2 段階認証、共有リンク（公開ダッシュボード）を作らない、地域・セッションの画面のスクリーンショットを `docs/` に貼らない。API キーは閲覧だけに限れると分かるまで AI に預けない（§8.2 のまま） | PO |
+| R-17 | 録画・自動操作のスクリプトを今後作るときは、本番を開く前に `localStorage` の `sukima:metrics:off` を `'1'` にする（今の `marketing/sns/` には本番を開くスクリプトはない） | SNS Marketer |
+
+#### 8.6.4 受け入れるリスク
+
+§8.3 の R-09〜R-14 から変わらない。R-09（偽のイベント）は、M-1 の対策で「任意の文字列」は送れなくなり、残るのは数の水増しだけ（1 部屋の `game_start` 30 件・1 タブ 1 時間 60 件まで）。
