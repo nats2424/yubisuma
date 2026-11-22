@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { goHome } from '../App';
-import { isMetricsOptedOut, setMetricsOptOut } from '../lib/analytics';
+import { isMetricsOptedOut, metricsAllowed, setMetricsOptOut } from '../lib/analytics';
 import { Brand } from './Layout';
 import { Panel } from './ui';
 
 // 匿名の利用統計の説明（docs/dev/02-architecture.md §14.5・M-C7）。
 // 外部送信規律の「公表」の 3 項目（送る情報・送り先・目的）と「送らない」の切り替えを 1 か所にまとめ、
 // 単独の画面（#/privacy）と、部屋・ひとり用の画面のモーダルで同じ中身を使う。
-// 送り先の会社名は【要確認】（§14.10 の 8）。公開前に Umami の規約で正式名称を確かめて直す
+// 送り先の運営会社は Umami Software, Inc.（米国。Umami の DPA に記載）
 export function PrivacyContent() {
   const [off, setOff] = useState(isMetricsOptedOut);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -17,6 +17,10 @@ export function PrivacyContent() {
     setOff(isMetricsOptedOut());
     setSaveFailed(!saved);
   };
+  // 「送る」を選んでいても、追跡しない・GPC・本番以外・ID 未設定などで実際には送らないことがある。
+  // 選んだ値だけを見て「送る」と出すと事実と違うので、送るかどうかの判定（metricsAllowed）そのものを見て表示する。
+  // 描画のたびに判定するので、ボタンを押して再描画されれば最新になる
+  const status = off ? '送らない' : metricsAllowed() ? '送る' : '送っていません（ブラウザの設定などのため）';
   return (
     <div className="privacy-body">
       <ul className="privacy-list">
@@ -37,7 +41,7 @@ export function PrivacyContent() {
           </ul>
         </li>
         <li>送らないもの：名前、チャット、部屋コード、ゲームの中の手・答え・得点。</li>
-        <li>送り先：Umami Software, Inc. のアクセス解析サービス「Umami Cloud」。</li>
+        <li>送り先：Umami Software, Inc.（米国）のアクセス解析サービス「Umami Cloud」。</li>
         <li>
           SUKIMA はあなたを見分ける番号を作らず、Cookie も使いません。ただし送り先の Umami
           は、届いたIPアドレス（ネットの住所）とブラウザの種類から、短い期間の訪問のまとまりと、おおまかな地域（国・地域）を出します（Umami
@@ -53,7 +57,7 @@ export function PrivacyContent() {
       </ul>
       <div className="privacy-switch">
         <p className="label" id="privacy-switch-label">
-          この端末からの送信：<strong>{off ? '送らない' : '送る'}</strong>
+          この端末からの送信：<strong>{status}</strong>
         </p>
         <div className="segmented" role="group" aria-labelledby="privacy-switch-label">
           <button className={off ? 'selected' : ''} aria-pressed={off} onClick={() => choose(true)}>

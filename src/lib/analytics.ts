@@ -58,7 +58,7 @@ export type Analytics = {
   track(e: MetricEvent, url: string): void;
 };
 
-// 送り先【要確認：古い説明は cloud.umami.is/api/send。§14.10 の 2】
+// 送り先（Umami Cloud の現行の公式ドキュメント docs.umami.is/docs/api/sending-stats。古い説明の cloud.umami.is/api/send ではない）
 export const UMAMI_ENDPOINT = 'https://gateway.umami.is/api/send';
 export const DEFAULT_PROD_HOST = 'sukima-ee3.pages.dev';
 export const OPT_OUT_KEY = 'sukima:metrics:off';

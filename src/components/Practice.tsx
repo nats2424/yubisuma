@@ -195,7 +195,8 @@ export default function Practice() {
         </a>
       </header>
       <main className="practice-main">{body}</main>
-      {/* 遊びの邪魔にならないよう、挑戦中は出さない（説明はモーダルで開くので、開いても挑戦は途切れない） */}
+      {/* 遊びの邪魔にならないよう、挑戦中（ラッシュの挑戦・単発の練習のどちらも）は出さない。
+          タイトルとゲームオーバーの画面でだけ出す（説明はモーダルで開くので、開いても画面は途切れない） */}
       {mode.kind !== 'challenge' && mode.kind !== 'single' && (
         <footer className="site-foot">
           <PrivacyLink />
