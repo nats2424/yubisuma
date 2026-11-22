@@ -7,11 +7,14 @@ import { getPlayerId, getSavedName, NAME_MAX, saveName } from '../lib/identity';
 import { isOnlineMode } from '../lib/transport';
 import { chatBlockedUntil, MAX_ROOM_PLAYERS, type RoomState } from '../room/logic';
 import { useRoom, type RoomHandle } from '../room/useRoom';
+import { useRoomMetrics } from '../room/useRoomMetrics';
+import { trackInviteShare, trackRulesOpen } from '../lib/analytics';
 import Chat from './Chat';
 import QrCode from './QrCode';
 import GameIcon, { ChatIcon } from './GameIcon';
 import ErrorBoundary, { CrashScreen, reloadPage } from './ErrorBoundary';
 import { Brand, DemoBanner } from './Layout';
+import { PrivacyLink } from './Privacy';
 import { roomUrl, inviteText, shareOrCopy, copyText, canWebShare } from './share';
 import { ConfirmButton, Panel } from './ui';
 
@@ -64,6 +67,8 @@ export default function Room({ code, create, initialGame, onCreated }: Props) {
 function RoomConnected({ code, create, initialGame, name }: { code: string; create: boolean; initialGame?: string; name: string }) {
   const [me] = useState(getPlayerId);
   const room = useRoom(code, me, name, create);
+  // 部屋の計測（作成・参加・ゲーム開始・盛り上がり・エラー）。中身は Backend のフック（M-C2）
+  useRoomMetrics(room, { create });
   const { status, state } = room;
   // 作成時に指定されたゲームを、部屋ができた直後に 1 回だけ選ぶ（J-06）。
   // useRoom の既定ゲームは固定なので、ホストの通常の「ゲームを選ぶ」操作で切り替える
@@ -233,12 +238,14 @@ function Message({ title, mark, children }: { title: ReactNode; mark?: string; c
   );
 }
 
-function ShareButton({ code, gameName }: { code: string; gameName: string | undefined }) {
+function ShareButton({ code, gameName, players }: { code: string; gameName: string | undefined; players: number }) {
   const [copied, setCopied] = useState(false);
   const [shown, setShown] = useState<string | null>(null);
   const url = roomUrl(code);
   const share = async () => {
     const r = await shareOrCopy({ title: 'SUKIMA', text: inviteText(code, gameName), url });
+    // 成功したときだけ数える（キャンセル・失敗は送らない。M-C2）
+    if (r === 'shared' || r === 'copied') trackInviteShare(r === 'shared' ? 'share' : 'copy', players);
     if (r === 'copied') {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
@@ -311,7 +318,11 @@ function RoomScreen({ room, state }: { room: RoomHandle; state: RoomState }) {
             <span className="room-code" title="ルームコード">
               <span className="muted room-label">ROOM</span> <span className="mono">{state.code}</span>
             </span>
-            <ShareButton code={state.code} gameName={findGame(state.game?.id ?? state.selectedGame)?.name} />
+            <ShareButton
+              code={state.code}
+              gameName={findGame(state.game?.id ?? state.selectedGame)?.name}
+              players={state.players.length}
+            />
             {!wide && (
               <button className="btn small chat-toggle" onClick={() => setChatOpen(true)} aria-label="チャットを開く">
                 <ChatIcon />
@@ -342,6 +353,10 @@ function RoomScreen({ room, state }: { room: RoomHandle; state: RoomState }) {
         <main className="room-main">
           {state.game ? <GameArea room={room} state={state} /> : <Lobby room={room} state={state} />}
           <Members state={state} me={me} isHost={isHost} online={online} onKick={(id) => dispatch({ type: 'kick', target: id })} />
+          {/* 匿名の利用統計の説明（M-C7）。部屋を抜けないようモーダルで開く */}
+          <footer className="site-foot room-foot">
+            <PrivacyLink />
+          </footer>
         </main>
         {wide ? (
           <aside className="room-side">
@@ -394,7 +409,7 @@ function Members({
   onKick: (id: string) => void;
 }) {
   return (
-    <Panel className="members-panel" title={`メンバー ${state.players.length}人`} aside={<QrButton code={state.code} />}>
+    <Panel className="members-panel" title={`メンバー ${state.players.length}人`} aside={<QrButton code={state.code} players={state.players.length} />}>
       <ul className="members">
         {state.players.map((p) => (
           <li key={p.id} className={online.has(p.id) ? '' : 'offline'}>
@@ -465,7 +480,7 @@ function GameCrashed({ onRetry, onLobby }: { onRetry: () => void; onLobby?: () =
 
 // 2 人以上になって招待カードが消えたあとも、目の前の人を追加で呼べるように QR を出す（D-25）。
 // ヘッダーは 320px で既に 1 行ぎりぎり（QA-BUG-08）なので、メンバー欄の見出しに置く
-function QrButton({ code }: { code: string }) {
+function QrButton({ code, players }: { code: string; players: number }) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   // 閉じたらフォーカスを開いたボタンへ戻す（キーボード・読み上げで操作している人が迷子にならないように）。
@@ -476,11 +491,19 @@ function QrButton({ code }: { code: string }) {
   }, []);
   return (
     <>
-      <button ref={buttonRef} className="btn small ghost qr-btn" onClick={() => setOpen(true)} aria-haspopup="dialog">
+      <button
+        ref={buttonRef}
+        className="btn small ghost qr-btn"
+        onClick={() => {
+          setOpen(true);
+          trackInviteShare('qr', players);
+        }}
+        aria-haspopup="dialog"
+      >
         <QrGlyph />
         QRを表示
       </button>
-      {open && <QrDialog url={roomUrl(code)} code={code} onClose={close} />}
+      {open && <QrDialog url={roomUrl(code, { via: 'qr' })} code={code} onClose={close} />}
     </>
   );
 }
@@ -527,8 +550,10 @@ function QrGlyph() {
 }
 
 // ホスト 1 人のロビーで最初に見せる招待カード（J-02）。URL を見せ、コピーと共有を大きいボタンで並べる
-function InviteCard({ code, gameName }: { code: string; gameName: string | undefined }) {
+function InviteCard({ code, gameName, players }: { code: string; gameName: string | undefined; players: number }) {
+  // コピー・共有する URL には ?via= を付けない。QR だけ ?via=qr（M-C3・R-10）
   const url = roomUrl(code);
+  const qrUrl = roomUrl(code, { via: 'qr' });
   const [note, setNote] = useState('');
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -541,11 +566,14 @@ function InviteCard({ code, gameName }: { code: string; gameName: string | undef
   };
   const failed = () => flash('コピーできませんでした。URLを長押ししてコピーしてください', false);
   const copyUrl = async () => {
-    if (await copyText(url)) flash('URLをコピーしました', true);
-    else failed();
+    if (await copyText(url)) {
+      flash('URLをコピーしました', true);
+      trackInviteShare('copy', players);
+    } else failed();
   };
   const share = async () => {
     const r = await shareOrCopy({ title: 'SUKIMA', text: inviteText(code, gameName), url });
+    if (r === 'shared' || r === 'copied') trackInviteShare(r === 'shared' ? 'share' : 'copy', players);
     if (r === 'copied') flash('招待文をコピーしました。LINEなどに貼り付けてください', true);
     else if (r === 'failed') failed();
   };
@@ -554,7 +582,7 @@ function InviteCard({ code, gameName }: { code: string; gameName: string | undef
       <div className="invite-body">
         {/* 対面で集まっているとき（D-25）は、URL を送るより目の前で読んでもらう方が早い */}
         <figure className="invite-qr">
-          <QrCode text={url} label="招待URLのQRコード" />
+          <QrCode text={qrUrl} label="招待URLのQRコード" />
           <figcaption>カメラで読み取って参加</figcaption>
         </figure>
         <div className="invite-text">
@@ -595,7 +623,7 @@ function Lobby({ room, state }: { room: RoomHandle; state: RoomState }) {
     // スマホでは「次に遊ぶゲーム → メンバー → ゲームを選ぶ」の順に並べる（CSS の order）。
     // ゲストが最初に「これから何が始まるか」を見られるようにするため（design/README.md）
     <div className="lobby">
-      {alone && <InviteCard code={state.code} gameName={selected?.name} />}
+      {alone && <InviteCard code={state.code} gameName={selected?.name} players={state.players.length} />}
       <Panel className="picker-panel" title="ゲームを選ぶ" aside={!isHost && <span className="pill">ホストが選びます</span>}>
         {CATEGORIES.map((cat) => (
           <div key={cat} className="picker-group">
@@ -657,7 +685,13 @@ function SelectedGame({ room, state, selected }: { room: RoomHandle; state: Room
       {/* 待っている前で長い説明を読ませないよう、ひと言だけを大きく出し、くわしいルールは折りたたむ（J-26）。
           ゲームを選び直したら閉じた状態に戻す（key） */}
       <p className="one-liner">{selected.oneLiner}</p>
-      <details key={selected.id} className="rules-more">
+      <details
+        key={selected.id}
+        className="rules-more"
+        onToggle={(e) => {
+          if (e.currentTarget.open) trackRulesOpen(selected.id);
+        }}
+      >
         <summary>くわしいルール</summary>
         <RuleList rules={selected.rules} />
       </details>
@@ -729,7 +763,14 @@ function GameArea({ room, state }: { room: RoomHandle; state: RoomState }) {
           {def.name}
         </h1>
         <div className="row">
-          <button className="btn small ghost" onClick={() => setShowRules((v) => !v)} aria-expanded={showRules}>
+          <button
+            className="btn small ghost"
+            onClick={() => {
+              if (!showRules) trackRulesOpen(def.id);
+              setShowRules(!showRules);
+            }}
+            aria-expanded={showRules}
+          >
             ルール
           </button>
           {/* 終わった後は結果の直下に大きいボタンを出すので、見出し横の小さいボタンはゲーム中だけにする */}
