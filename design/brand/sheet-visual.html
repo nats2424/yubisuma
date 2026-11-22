@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>WATTO ブランドシート用の見本（ラフ）</title>
+<!--
+  ブランドシート（05）に載せる見本 1 枚。design/brand/render.mjs で sheet-visual.png（幅 1080）にする。
+  - スマホで縦に流し見する前提で幅 540（2 倍で撮る）。いちばん小さい文字も 15px 以上にする
+  - マークの定義は icon-roughs.html の m-watto と同じ。直すときは両方そろえる
+  - 決まり（design/brand/review.md §1.2）：作り手は円・黄＋墨。トマトは SUKIMA だけ。プロフィール画像は影なし・文字なし。
+    X のヘッダーでは左下にプロフィール画像が重なるので、作り手のマークは右下に置く
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Noto+Sans+JP:wght@700;900&display=block" rel="stylesheet">
+<style>
+:root {
+  --bg: #fff4e0; --ink: #1c1a17; --white: #ffffff; --muted: #5d564c;
+  --accent: #ff5b3a; --yellow: #ffd23f; --blue: #4a74f5; --pink: #ff9cc2; --teal: #2bb3a3; --purple: #9b7bf0;
+  --font-body: 'Noto Sans JP', sans-serif;
+  --font-pop: 'Dela Gothic One', 'Noto Sans JP', sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #ddd; font-family: var(--font-body); color: var(--ink); }
+svg { display: block; }
+.dots { background-color: var(--bg);
+  background-image: radial-gradient(circle, rgba(28,26,23,0.08) 1.5px, transparent 2px); background-size: 16px 16px; }
+
+#sheet { width: 540px; padding: 28px 24px 32px; }
+.title { font-weight: 900; font-size: 15px; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 6px; }
+section { margin-top: 26px; }
+h2 { font-weight: 900; font-size: 20px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+h2 .n { font-family: var(--font-pop); font-size: 15px; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--ink); color: var(--yellow); display: inline-flex; align-items: center; justify-content: center; }
+.note { font-weight: 700; font-size: 15px; color: var(--muted); margin: 8px 0 0; line-height: 1.5; }
+.panel { background: var(--white); border: 2.5px solid var(--ink); border-radius: 16px; box-shadow: 4px 4px 0 var(--ink); }
+
+/* 1. マーク */
+.hero { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 8px 0 4px; }
+.hero svg { width: 220px; height: 220px; }
+.hero .name { font-family: var(--font-pop); font-size: 56px; line-height: 1; letter-spacing: 0.04em; }
+.hero .sub { font-weight: 900; font-size: 18px; letter-spacing: 0.2em; color: var(--muted); margin-top: -4px; }
+
+/* 2. 色・書体 */
+.swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sw { border: 2.5px solid var(--ink); border-radius: 12px; overflow: hidden; background: var(--white); }
+.sw .chip { height: 56px; border-bottom: 2.5px solid var(--ink); }
+.sw .t { padding: 6px 8px 8px; font-weight: 900; font-size: 16px; line-height: 1.3; }
+.sw .t small { display: block; font-weight: 700; font-size: 15px; color: var(--muted); }
+.sub-row { display: grid; grid-template-columns: 1.6fr 1fr; gap: 10px; margin-top: 10px; }
+.accents { display: flex; gap: 6px; padding: 10px; }
+.accents span { flex: 1; height: 36px; border: 2.5px solid var(--ink); border-radius: 8px; }
+.ng { position: relative; }
+.ng .chip { background: var(--accent); }
+.ng .badge { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); white-space: nowrap;
+  background: var(--white); border: 2.5px solid var(--ink); border-radius: 999px; padding: 2px 10px; font-weight: 900; font-size: 15px; }
+.fonts { margin-top: 12px; padding: 14px 16px; display: grid; gap: 12px; }
+.font-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.font-row .s1 { font-family: var(--font-pop); font-size: 40px; line-height: 1; letter-spacing: 0.04em; }
+.font-row .s2 { font-weight: 900; font-size: 26px; letter-spacing: 0.18em; line-height: 1.2; }
+.font-row .l { font-weight: 700; font-size: 15px; color: var(--muted); text-align: right; line-height: 1.35; }
+
+/* 3. SUKIMA と並べる（動画の締めのカードの想定） */
+.endcard { border: 2.5px solid var(--ink); border-radius: 16px; padding: 30px 16px 22px;
+  display: flex; flex-direction: column; align-items: center; gap: 26px; }
+.logo { display: inline-block; font-family: var(--font-pop); font-size: 50px; line-height: 1; letter-spacing: 0.06em;
+  color: #fff; background: var(--accent); padding: 12px 22px 16px; border: 4px solid var(--ink); border-radius: 22px;
+  transform: rotate(-3deg); box-shadow: 6px 6px 0 var(--ink); -webkit-text-stroke: 2.5px var(--ink); paint-order: stroke fill; white-space: nowrap; }
+.logo .slit { display: inline-block; width: 13px; height: 1.6em; margin: -0.4em 4px -0.4em 5px; vertical-align: middle;
+  background: var(--bg); border-left: 3.5px solid var(--ink); border-right: 3.5px solid var(--ink); transform: rotate(14deg); }
+.by { display: flex; align-items: center; gap: 10px; }
+.by .k { font-weight: 900; font-size: 16px; color: var(--muted); }
+.by svg { width: 48px; height: 48px; }
+.by .nm { font-family: var(--font-pop); font-size: 26px; letter-spacing: 0.04em; }
+
+/* 4. プロフィール画像 */
+.avatars { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.av { border-radius: 14px; padding: 14px 10px; display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; border: 2.5px solid var(--ink); }
+.av.light { background: var(--white); }
+.av.dark { background: #000; }
+.av .c { border-radius: 50%; overflow: hidden; flex: none; }
+.av .c svg { width: 100%; height: 100%; }
+.av-labels { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; text-align: center; font-weight: 700; font-size: 15px; color: var(--muted); }
+
+/* 5. X のヘッダー（1500×500 を 492×164 に縮小） */
+.xprof { border: 2.5px solid var(--ink); border-radius: 16px; overflow: hidden; background: var(--white); }
+.header { width: 100%; aspect-ratio: 3 / 1; position: relative; overflow: hidden; border-bottom: 2px solid #ddd; }
+.header .center { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.header .logo { font-size: 30px; padding: 7px 13px 9px; border-width: 3px; border-radius: 14px; box-shadow: 4px 4px 0 var(--ink); -webkit-text-stroke: 1.6px var(--ink); }
+.header .logo .slit { width: 8px; border-left-width: 2.5px; border-right-width: 2.5px; margin: -0.4em 3px -0.4em 3px; }
+.header .copy { font-weight: 900; font-size: 15px; white-space: nowrap; }
+.header .corner { position: absolute; right: 12px; bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.header .corner svg { width: 30px; height: 30px; }
+.header .corner span { font-family: var(--font-pop); font-size: 15px; letter-spacing: 0.04em; }
+.xbody { position: relative; height: 92px; padding: 0 16px; }
+.xbody .pfp { position: absolute; left: 16px; top: -46px; width: 96px; height: 96px; border-radius: 50%; border: 4px solid var(--white); overflow: hidden; background: var(--white); }
+.xbody .pfp svg { width: 100%; height: 100%; }
+.xbody .who { position: absolute; left: 124px; top: 12px; line-height: 1.35; }
+.xbody .who b { font-size: 18px; font-weight: 900; }
+.xbody .who span { display: block; font-size: 15px; font-weight: 700; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- icon-roughs.html の m-watto と同じ（札はトマトではなく差し色 4 色） -->
+    <g id="m-watto">
+      <circle cx="100" cy="100" r="92" fill="var(--yellow)" stroke="var(--ink)" stroke-width="9"/>
+      <g stroke="var(--ink)" stroke-width="9" stroke-linecap="round">
+        <line x1="134" y1="66" x2="152" y2="48"/><line x1="134" y1="134" x2="152" y2="152"/>
+        <line x1="66" y1="134" x2="48" y2="152"/><line x1="66" y1="66" x2="48" y2="48"/>
+      </g>
+      <circle cx="100" cy="100" r="30" fill="var(--white)" stroke="var(--ink)" stroke-width="9"/>
+      <g stroke="var(--ink)" stroke-width="8" stroke-linejoin="round">
+        <rect x="88" y="26" width="24" height="24" rx="5" fill="var(--blue)"/><rect x="150" y="88" width="24" height="24" rx="5" fill="var(--pink)"/>
+        <rect x="88" y="150" width="24" height="24" rx="5" fill="var(--teal)"/><rect x="26" y="88" width="24" height="24" rx="5" fill="var(--purple)"/>
+      </g>
+    </g>
+  </defs>
+</svg>
+
+<div id="sheet" class="dots">
+  <p class="title">WATTO ブランド見本（ラフ・仕上げ前）</p>
+
+  <section style="margin-top:8px">
+    <h2><span class="n">1</span>マーク</h2>
+    <div class="hero">
+      <!-- 画面・カードでは墨のずらした影を付ける（影の半径は線の外側 96.5 に合わせる） -->
+      <svg viewBox="-4 -4 216 216"><circle cx="108" cy="108" r="96.5" fill="var(--ink)"/><use href="#m-watto"/></svg>
+      <div class="name">WATTO</div>
+      <div class="sub">ワット</div>
+    </div>
+    <p class="note">まんなかの「場」を 4 人が囲み、光が出る。円で、傾けない。目や手足は付けない。</p>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span>色と書体</h2>
+    <div class="swatches">
+      <div class="sw"><div class="chip" style="background:var(--yellow)"></div><div class="t">黄（主）<small>#ffd23f</small></div></div>
+      <div class="sw"><div class="chip" style="background:var(--ink)"></div><div class="t">墨（主）<small>#1c1a17</small></div></div>
+      <div class="sw"><div class="chip dots"></div><div class="t">生成り（地）<small>#fff4e0</small></div></div>
+    </div>
+    <div class="sub-row">
+      <div class="sw"><div class="accents"><span style="background:var(--blue)"></span><span style="background:var(--pink)"></span><span style="background:var(--teal)"></span><span style="background:var(--purple)"></span></div><div class="t" style="border-top:2.5px solid var(--ink)">差し色<small>マークの中の小物だけ</small></div></div>
+      <div class="sw ng"><div class="chip"></div><span class="badge">使わない</span><div class="t">トマト<small>SUKIMA だけ</small></div></div>
+    </div>
+    <div class="panel fonts">
+      <div class="font-row"><span class="s1">WATTO</span><span class="l">Dela Gothic One<br>名前・見出し</span></div>
+      <div class="font-row"><span class="s2">ワット</span><span class="l">Noto Sans JP 900<br>読み・本文（字間を空ける）</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span>SUKIMA と並べたとき</h2>
+    <div class="endcard dots" style="background-color:var(--bg)">
+      <span class="logo">SUKI<span class="slit"></span>MA</span>
+      <div class="by"><span class="k">つくった人</span><svg viewBox="0 0 200 200"><use href="#m-watto"/></svg><span class="nm">WATTO</span></div>
+    </div>
+    <p class="note">作品はトマトの傾いた札、作り手は黄色い丸。動画の締めでは作品を大きく、作り手は下に小さく。</p>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span>SNS のプロフィール画像</h2>
+    <div class="avatars">
+      <div class="av light"><div class="c" style="width:100px;height:100px"><svg viewBox="4 4 192 192"><use href="#m-watto"/></svg></div><div class="c" style="width:48px;height:48px"><svg viewBox="4 4 192 192"><use href="#m-watto"/></svg></div><div class="c" style="width:32px;height:32px"><svg viewBox="4 4 192 192"><use href="#m-watto"/></svg></div></div>
+      <div class="av dark"><div class="c" style="width:100px;height:100px"><svg viewBox="4 4 192 192"><use href="#m-watto"/></svg></div><div class="c" style="width:48px;height:48px"><svg viewBox="4 4 192 192"><use href="#m-watto"/></svg></div><div class="c" style="width:32px;height:32px"><svg viewBox="4 4 192 192"><use href="#m-watto"/></svg></div></div>
+    </div>
+    <div class="av-labels"><span>明るい画面</span><span>暗い画面</span></div>
+    <p class="note">円で切り抜く前提。影なし・文字なし。</p>
+  </section>
+
+  <section>
+    <h2><span class="n">5</span>X のヘッダー（縮小）</h2>
+    <div class="xprof">
+      <div class="header dots">
+        <div class="center">
+          <span class="logo">SUKI<span class="slit"></span>MA</span>
+          <span class="copy">スキマ時間に みんなでサクッと</span>
+        </div>
+        <div class="corner"><svg viewBox="0 0 200 200"><use href="#m-watto"/></svg><span>WATTO</span></div>
+      </div>
+      <div class="xbody">
+        <div class="pfp"><svg viewBox="4 4 192 192"><use href="#m-watto"/></svg></div>
+        <div class="who"><b>SUKIMA｜WATTO</b><span>@watto_xx（未確定）</span></div>
+      </div>
+    </div>
+    <p class="note">左下はプロフィール画像が重なるので、マークは右下に小さく置く。</p>
+  </section>
+</div>
+
+</body>
+</html>
