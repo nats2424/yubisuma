@@ -773,6 +773,7 @@ export type RoomHandle = {
 | ADR-10 | `CHAT_KEEP = 60` は据え置き。チャットの状態からの分離は次フェーズ候補 | 実測 45.7KB で 64KB 以内。分離はメッセージ種別・同期方式の追加になり MVP には重い |
 | ADR-11 | Should のうち 2 点だけ先に入れる：`RoomStatus` に `'kicked'`、`MicroTuning` に `enabled` | どちらも engine / 調整値の形に関わり、後から足すと契約が変わる。コストはほぼゼロ（kicked は現行の left 判定の分岐、enabled は出題の絞り込み 1 行）。UI の出し分けや OGP・エラー境界・コード衝突確認は入れない |
 | ADR-12 | プロトコルに `v: 2` を付け、違う版は捨てる | デプロイ直後、キャッシュの古いタブと新しいタブが同じ部屋に入っても互いに壊さない（古い側には「見つかりません」と出る） |
+| ADR-13 | 需要の計測は **Umami Cloud（無料の Hobby）に、自前の小さな送信関数から直接送る**（Umami の読み込みスクリプトは使わない）。北極星は端末の中で判定し、部屋コードも使い捨ての部屋 ID も送らない。ゲーム ID は登録の一覧のものだけ、参照元は許可一覧の名前だけ、本番のホスト名のときだけ送る（Security 05 §8 の M-1〜M-3）（§14） | Cloudflare Web Analytics はハッシュ URL と独自イベントに対応しないため北極星が測れない。自前（Pages Functions など）は集計画面まで作る必要があり、PMF 前には重い。スクリプトを読み込まないので、何を送るかをこちらで全部決められ、外部のコードも動かさない |
 
 ### PdM 仕様から変えた点（まとめ）
 
@@ -873,3 +874,344 @@ export type RoomHandle = {
 | P2-13 | R-02 | `engine.ts` `handleRaw` | `departed` を `state` だけでなく `action`・`hb` の受信でも外す（P1-4） | bye のあと戻ったメンバーが他の端末の `departed` に残り、猶予中の引き継ぎ候補から外れて QA-BUG-07 と同じ「先の人を飛ばす」が起きていた |
 
 - テスト：`review-fixes.test.ts`「R-01: …」「R-02: …」。
+
+### 13.2 最小計測の実装（Backend：M-B1〜M-B5。設計は §14）
+
+| 点 | 決めたこと | 理由 |
+| --- | --- | --- |
+| 置き場所 | `src/lib/metrics.ts`（純粋関数）・`src/lib/metricsStore.ts`（端末の中の日付・入口の印・部屋の記録のキー）・`src/lib/analytics.ts`（送信・送らない条件・Client 用の入口）・`src/room/roomMetrics.ts`（部屋の配線。React なし）・`src/room/useRoomMetrics.ts`（フック）・`src/games/ids.ts`（ゲーム ID の一覧） | フックの中身を React なしで疑似ネットワークに流して確かめるため。`ids.ts` は registry（View を読み込む）を計測から読まないため。registry と一致することはテストで確かめる |
+| `RoomTally` | §14.6 の型に `joined`（この部屋で `room_join` を送ったか）を足した。`createdAt` は「この端末が作って `room_create` を送った時刻」で、送ったかどうかの印を兼ねる | リロードで `room_create`・`room_join` を数え直さないため（sessionStorage に記録ごと置く） |
+| `AnalyticsDeps` | `version`（`data.v`）を足した。`v` は `package.json` を `import { version }` で読む（`vite.config.ts` の `define` は不要） | 設計どおり全イベントに `v` と `mode: 'online'` を付ける。ページ表示には付けない（Umami の pageview は data を持たない） |
+| 二段目の検査 | イベント名ごとに許可するキーと値の形を表で持ち、外れたら送らない。`url` は `/`・`/practice`・`/r` と `?s=<許可した値>` だけ、`referrer` は固定の URL か空だけ | `metrics.ts` に不具合があっても外に出ないため（R-4） |
+| 送り方 | `fetch` に `credentials: 'omit'`・`referrerPolicy: 'no-referrer'` を足した | Cookie を付けない。`?s=` が消える前の数百ミリ秒にページの URL を Referer で送らない【要確認：Umami が Referer なしの受信を受け付けるか。§14.10 の 2 と一緒に本番で 1 回確かめる】 |
+| 送らない設定 | `setMetricsOptOut(off)` は保存できたかを真偽で返す。このタブで選んだ値は保存の失敗・読み取りの例外より優先する | Client が「この端末では設定を保存できません」を出すため（R-2）。選んでいないときに読むと例外なら送らない側 |
+| 1 時間 60 件 | タブの中の変数で数える（リロードで 0 に戻る） | 目的は不具合による無限送信の止め。偽の状態への備えは部屋ごとの上限（`game_start` 30 件・`room_enjoyed` 1 回）を sessionStorage で持つ |
+| `room_error` | 同じフック（同じ画面）の中で種類ごとに 1 回 | 再試行で何度出ても数えない |
+| 環境変数 | `import.meta.env.VITE_UMAMI_WEBSITE_ID`・`VITE_UMAMI_HOST`・`DEV`・`MODE` を名前で読む。`vite-env.d.ts` は足していない（`vite/client` の型で通る。`transport.ts` と同じ書き方） | `security-static.test.ts` の「読む環境変数の一覧」を 4 つ足して更新した |
+
+- テスト：`metrics.test.ts`（M-B1 ①〜⑨）、`analytics.test.ts`（M-B2 ①〜⑧、④ は疑似ネットワークの 4 人の部屋で 5 ゲーム・ホスト交代・再接続・リロード、M-B3 の配線）。
+
+---
+
+## 14. 需要を測る最小限の計測（J-23。D-11・D-12・D-41）
+
+- 作成：CTO（2026-11-21）。**状態：設計。Security の設計レビュー（1 回目。`docs/dev/05-security-report.md` §8）の必須 M-1〜M-5 を反映済み（2026-11-21）。§14.11 の受け入れるリスクを PO が了承したら実装に入る**
+- Security の指摘の反映先：M-1 → §14.3 #5・#6・§14.6 `observeRoom`・M-B1／M-2 → §14.3 #1・§14.6 `referrerName`／M-3 → §14.5 送らない条件・M-B4・M-C8・11 §2-4／M-4・M-5 → §14.5 説明文と置き場所・M-C7。推奨 R-1〜R-10 の取り込みは §14.7 の末尾の表
+- 入力：`docs/NORTH_STAR.md`、`docs/DECISIONS.md`（D-11・D-12・D-25・D-41・D-45〜D-49）、`docs/dev/08-pmf-strategy.md` §1・§2、`docs/strategy/market-review/05-strategy-manager-final.md` §3.1、`docs/dev/11-launch-guide.md`、`docs/research/cloudflare-checklist.md` §5
+- 外部の情報は**検索結果の要約で確かめた**（umami.is・docs.umami.is はこの環境から本文を開けない）。数字・仕様には【確認済み（検索）】【要確認】を付けた。要確認は §14.10 にまとめた
+- 08 §2.3 のイベント案から**数を絞り、`rid`（使い捨ての部屋 ID）をやめた**。理由は §14.3 の冒頭
+
+### 14.1 結論
+
+1. **道具：Umami Cloud の無料プラン（Hobby）**。Umami の読み込みスクリプトは入れず、Backend が書く 100 行ほどの送信関数から Umami の受け口（`/api/send`）へ直接送る。
+2. **北極星は端末の中で判定する**：ホストの端末が「この部屋で始まったゲーム数」と「参加人数の最大」を手元で数え、条件（2 ゲーム以上・3 人以上）を初めて満たしたゲーム開始の瞬間に `room_enjoyed` を 1 回だけ送る。週の件数＝週の「楽しまれたルーム」。部屋コードも部屋ごとの ID も送らない。
+3. **今入れる：V-1（人数）・V-2（`?s=stream` の印）。V-3 は送り方だけ今決め、ページは 2027 年 1 月**（Client・Marketing。05 §3.1 の期限どおり）。
+4. **PO の手間**：最初に 15 分（Umami の登録と、Cloudflare に値を 1 つ入れる）。その後は週 2 分の確認（§14.7。AI に任せる案は PO 判断）。
+
+### 14.2 道具の比較
+
+| 観点 | **Umami Cloud（Hobby）** | Cloudflare Web Analytics | 自前（Cloudflare Pages Functions ＋保存先） |
+| --- | --- | --- | --- |
+| 費用 | 無料。月 10 万イベント・サイト 1 つ・保存 6 か月【確認済み（検索）。公式ページの本文は要確認】。超えたら Pro 月 20 ドル（約 3,000 円。100 万イベント）で予算の内 | 無料 | 無料枠の範囲なら 0 円の見込み【要確認】 |
+| Cookie・同意表示 | Cookie を使わない（公式の説明）【確認済み（検索）】。同意の表示は出さず、説明のページと「送らない」設定を置く（§14.5） | Cookie を使わないとされる【要確認】 | 作り方しだい（Cookie なしで作れる） |
+| 独自イベント（部屋作成・ゲーム開始） | 送れる。名前 50 文字まで、項目 50 個まで、文字列 500 文字まで【確認済み（検索）】 | **送れない**（ページ表示だけ）【公式の記述は見つからず、二次情報。要確認】 | 何でも送れる |
+| ハッシュ URL（`#/r/XXXX`） | こちらが送る URL を決めるので問題なし（`/r` だけ送る） | **ハッシュの画面遷移に対応しない**（公式の SPA の説明）【確認済み（検索）】→ 部屋・ひとり用の区別すら取れない | 問題なし |
+| 部屋コードを送らない | 送る中身を全部こちらで組み立てるので、確実に送らない | ハッシュは送られないので送らない | 確実に送らない |
+| PO の手間 | 登録 10 分＋値を 1 つ入れる 5 分。週の確認は画面で 1 つの数字を見るだけ | Pages の画面でオンにするだけ（5 分）。ただし北極星が出ないので意味が薄い | 保存先の作成・つなぎ込みに PO の操作が要る。集計の画面も作る必要があり、AI の作業も大きい（3〜5 人日の見込み） |
+| 方針との相性 | 「サーバーを持たない」を保てる | 同左 | サーバー処理を持つことになる（今は使わない方針。cloudflare-checklist 冒頭） |
+| 弱点 | 広告ブロッカーで Umami の送り先が止められることがある【要確認】→ 数は**下限**として読む。外部の会社にデータを預ける | 北極星・V-1・V-2 が測れない | 作って直す手間。PMF 前にやることではない |
+
+**推奨：Umami Cloud（Hobby）**。北極星・V-1・V-2 を測れるのはこれと自前だけで、自前は手間が大きい。
+
+- **読み込みスクリプトを使わない理由**：① 外部の JavaScript をページで動かさない（中身が変わってもこちらは気づけない）② Umami のスクリプトは URL・ハッシュ・参照元をそのまま送るので、部屋コードが混じる余地を残したくない ③ 送る項目を表（§14.3）のとおりに固定でき、テストで確かめられる。
+- **Cloudflare Web Analytics は入れない**（二重に計測しても、PO が見る画面が増えるだけ）。Pages の画面に「Web Analytics を有効にする」の案内が出ても押さない。
+- **移る条件**：月 7 万イベント（上限の 70%）を超えたら、Pro（月 20 ドル）か自前に移るかを決める（それ自体が良い兆候）。広告ブロッカーでの欠けが大きいと分かったら、同じ場所（自分のドメイン）から送れるよう Pages Functions で中継する案を CTO が出す。**偽のイベントが続いたら**（週の確認で `room_enjoyed > room_create`、1 時間に数十件の急な山、本番以外の hostname や来訪のない国からの件数、が 2 週続く。Supabase の接続数・メッセージ数と合わない。05 §8.3 R-09）も、Pages Functions で中継し、Origin の確認と件数の上限を付ける案を CTO が出す（Website ID を公開しなくて済む）。
+
+### 14.3 送るイベントと項目
+
+**`rid` をやめた理由**：08 §2.1 の `rid` は部屋ごとに付く ID で、同じ部屋のイベントをつなげられる（Umami の画面ではつなげて見られず、手間の割に使えない）。端末の中で数えて「条件を満たした瞬間」に送れば、ID なしで北極星・L1・L10 が出せる。送る ID が 1 つもない方が、Security の確認も説明文も短くなる。
+
+**共通**：すべてのイベントに `mode`（`online` だけ送る。デモモードでは何も送らない）と `v`（アプリの版。`package.json` の version をビルド時に埋める）を付ける。端末の種類（スマホ・PC）は Umami が画面の大きさと UA から自動で分けるので、`dev` は送らない。
+
+| # | 名前 | 送る端末・時点 | 項目（値） | 使う指標 |
+| --- | --- | --- | --- | --- |
+| 1 | （ページ表示） | 全員：画面が変わったとき（`home` / `practice` / `room`）。Umami の pageview として送る | `url`：`/`・`/practice`・`/r` のどれか（**コードは付けない**）。印があれば `?s=stream` などを付ける（許可した値だけ）。`referrer`：ページを開いた最初の 1 回だけ、参照元が**許可一覧（下の表）に当たればその名前**、当たらなければ `other`、空・自分のサイトなら空（**オリジンは送らない**。`https://taro-yamada.github.io` のようにオリジン自体が人や勤め先を指すため。M-2）。`#/privacy` ではページ表示を送らない（R-9） | 流入・V-3 |
+| 2 | `room_create` | ホスト：「部屋を作る」で作った部屋が初めて `ready` になったとき | `src`：`stream` / `x` / `tiktok` / `guide` / `none`（`?s=` の印。許可した値以外は `other`）。`rehost`：`7d` / `28d` / `no`（この端末で前にホストした日から）。`was_guest`：真偽（この端末で前にゲスト参加したことがあるか）。`after_practice`：真偽（7 日以内にこの端末でひとり用を遊んだか） | P2・P3・L4・L5・**V-2** |
+| 3 | `invite_share` | ホスト：招待の共有・コピーが成功したとき、QR を開いたとき | `method`：`share` / `copy` / `qr`。`n`：その時点の人数（1〜10 の整数。外れたら送らない） | L3・対面の導線（D-25・J-27） |
+| 4 | `room_join` | ゲスト：部屋の状態を初めて受け取り、自分がメンバーに入ったとき（同じタブで同じ部屋なら 1 回だけ。リロードで数え直さない） | `via`：`qr`（QR の URL の印）/ `code`（トップでコードを入れた）/ `link`（それ以外） | L2 の代わり・対面の導線 |
+| 5 | `game_start` | ホスト：自分がホストのときに、新しいゲームが始まったのを状態で見たとき（`state.game.startedAt` が変わった） | `game`：ゲーム ID（**`src/games/registry.ts` の ID の一覧にあるものだけ**。ない状態は数えも送りもしない。M-1）。`n`：ゲームの参加人数（**1〜10 の整数だけ**。外れた状態は数えも送りもしない。区分けは集計で行う）。`seq`：この部屋で何ゲーム目か（`1`〜`4`、5 以上は `5`）。`wait`：`seq` が 1 のときだけ、部屋を作ってからの分（`0-1` / `1-3` / `3-5` / `5-10` / `10+`）。引き継いだホストは作成時刻を知らないので付けない | L1・L6・L8・L10・**V-1** |
+| 6 | `room_enjoyed` | ホスト：ゲーム開始の瞬間に、この部屋が**初めて**北極星の条件を満たしたとき（§14.4） | `peak`：これまでのゲームの参加人数の最大（3〜10 の整数。数えた状態の `n` からだけ作る）。`game`：その瞬間に始まったゲーム ID（#5 と同じく一覧のものだけ） | **北極星**・**V-1**（8〜10 人の割合） |
+| 7 | `room_error` | 全員：「接続できませんでした」「見つかりません」「満員」を初めて出したとき（同じ画面で 1 回） | `kind`：`failed` / `notfound` / `full` | L9 |
+| 8 | `practice_over` | ひとり用：1 回の挑戦が終わったとき | `stage`：`1-4` / `5-9` / `10-14` / `15+`。`best`：真偽（自己ベストを更新したか） | 入口の量・L5 |
+| 9 | `rules_open` | 全員：「くわしいルール」を開いたとき（J-26 の折りたたみを開いたとき） | `game`：ゲーム ID（一覧のものだけ） | H10（ひと言で足りているか） |
+
+**参照元の許可一覧（初期案。CTO の仮置き。名前の追加・削除は Marketing・PdM が決める）**
+
+参照元の URL のホスト名が、下のドメインと**完全に一致するか、そのサブドメイン**（`www.google.com`・`l.instagram.com` など。`evilgoogle.com` は当たらない）で、かつ `https:` のときだけ名前にする。それ以外（`http:`・`file:`・IP アドレス・解釈できない文字列・一覧にないドメイン）は `other`。参照元が空か自分のサイトなら空。
+
+| 名前 | ドメイン | 主な用途 |
+| --- | --- | --- |
+| `google` | `google.com`・`google.co.jp` | 検索（V-3） |
+| `yahoo` | `yahoo.co.jp`・`yahoo.com` | 検索（V-3） |
+| `bing` | `bing.com` | 検索（V-3） |
+| `duckduckgo` | `duckduckgo.com` | 検索（V-3） |
+| `x` | `t.co`・`x.com`・`twitter.com` | SNS |
+| `line` | `line.me` | 招待（LINE のアプリ内ブラウザは参照元を付けないことが多い） |
+| `instagram` | `instagram.com` | SNS |
+| `facebook` | `facebook.com` | SNS |
+| `youtube` | `youtube.com`・`youtu.be` | 配信（V-2 の補助） |
+| `twitch` | `twitch.tv` | 配信（V-2 の補助） |
+| `tiktok` | `tiktok.com` | SNS |
+| `discord` | `discord.com` | 配信・コミュニティ |
+| `hatena` | `hatena.ne.jp` | ブックマーク |
+
+- 人が自分の名前でサブドメインを持てるドメイン（`github.io`・`pages.dev`・`blogspot.com`・`note.com` の個人ページのような形）は**一覧に入れない**（M-2 の趣旨）。足すときは Security に確かめる。
+- Umami へは名前をそのまま `referrer` に入れず、名前ごとの**固定の URL**（`google` → `https://google.com`、`other` → `https://other.invalid`）に置き換えて送る。Umami の参照元の画面がドメインで集計するため【要確認：Umami が URL でない参照元をどう扱うか。実装の時に Backend が確かめる】。
+
+**後回し（今は送らない）**
+
+| 08 の案 | 理由 | 入れる時期の目安 |
+| --- | --- | --- |
+| `join_view`・`joined.ms`（L2 そのもの） | 「開いたが入れなかった」は `room_error` とページ表示の `/r` で大まかに見える。秒数は試遊の観察（D-48）で取る | L2 が問題になったら |
+| `game_end`・`room_close`・`host_takeover` | 北極星・L1 は `game_start` の `seq` と `room_enjoyed` で出る。`room_close` は届かないことが多い。引き継ぎの補正は `rid` をやめたので不要 | 不要の見込み |
+| `practice_start`・`practice_share`・`practice_to_room` | ページ表示の `/practice` と `room_create.after_practice` で足りる | ひとり用を改善するとき |
+| `feedback`（1 タップ感想） | 画面の追加になる。試遊とアンケートで取る | Phase 1 の途中で PdM が判断 |
+| 端末ごとの `named` | 使い道が薄い | 不要 |
+
+**V-1〜V-3 の扱い**
+
+| # | 今 | 後 |
+| --- | --- | --- |
+| V-1 大きめの部屋 | **今入れる**：`room_enjoyed.peak`（8〜10 の割合）と `game_start.n` | 30 人以上の需要は測れない（部屋は 10 人まで。05 §3.1 のとおり弱いサインとして読む） |
+| V-2 配信での利用 | **今入れる**：`?s=stream` の印を読み、`room_create.src` に載せる（数えるのは「`s=stream` から作られた部屋の数」）。印つき URL の置き場所と「配信で使って OK」の文言は Client（2027 年 2 月まで。05 §7） | 配信者の数は計測では数えない（同じ人を見分けないため。05 G-7）。SNS Marketer の検索で数える |
+| V-3 余興ページへの検索来訪 | **送り方だけ今決める**：説明ページは検索に出すため**ハッシュではない本物のパス**（例：`/yokyo/`。名前は Marketing・Client）にし、そのページでもページ表示（`url` はそのパス、`referrer` は許可一覧の名前）を送る。参照元が `google`・`yahoo`・`bing`・`duckduckgo` の表示数＝検索来訪 | ページは 2027 年 1 月末まで（Client）。検索語と順位は Umami では分からないので、Google Search Console（無料）を使う。登録は PO の作業になる（10 分）ので、ページを出すときに PO 判断として出す |
+
+**量の見積もり**【仮定】：4 人の部屋で 3 ゲーム遊ぶと、ページ表示 4＋作成 1＋招待 1＋参加 3＋開始 3＋楽しまれた 1 ＝ 約 13 件。トップ・ひとり用の表示を足しても、月 10 万件は**部屋にして月 5,000 前後**まで持つ。Phase 1（〜100 部屋）では上限の 2% 程度。
+
+### 14.4 北極星の数え方（端末の中の判定）
+
+部屋ごとの小さな記録（以下「部屋の記録」）を**全員の端末**が持ち、送るのはそのときのホストだけにする。
+
+```
+部屋の記録 = { games: number, peak: number, enjoyed: boolean, lastStartedAt: number | null, createdAt: number | null }
+```
+
+1. 端末は部屋の状態を受け取るたびに、`state.game.startedAt` が `lastStartedAt` と違えば「新しいゲームが始まった」とみなし、`games += 1`、`peak = max(peak, game.players.length)` にする（ホストもゲストも同じ）。ただし `game.id` が登録の一覧にない、または `game.players.length` が 1〜10 の整数でない状態は**数えない**（記録を変えない。偽の状態 R-02 で、攻撃者の決めた文字列をホストの端末から送らせないため。M-1）。
+2. その瞬間に**自分がホストなら** `game_start` を送る。
+3. 1 の更新で `games >= 2 && peak >= 3` が**初めて**真になり、かつ自分がホストなら `room_enjoyed` を送る。真になったら `enjoyed = true`（ゲストのままでも立てる）。
+4. 部屋の記録はタブの `sessionStorage`（キーは `sukima:m:room:` ＋部屋コード。**端末の中だけで、送らない**）に置き、リロードで数え直さない。部屋を出たら消す。
+
+- **なぜ全員が数えるか**：ホストが交代しても、新しいホストは参加者として同じ数を数えてきたので、`seq` が続き、`room_enjoyed` は「条件が初めて真になったゲーム開始」を行ったホスト 1 人だけが送る（二重に数えない）。
+- **「3 人以上」の読み方**：「その部屋で始まったゲームのうち、どれかの参加者が 3 人以上」とした（08 §1.2 の「3 人以上がゲームに参加し」）。**PdM に確定してもらう**（他人が 2 人のゲームを 2 回は含まない、という点だけが違う）。
+- **ずれる場合（許容する）**：① 途中から入った人がホストを引き継ぐと、その人の `games` は少ないので、条件を満たすのが遅れるか、すでに数えた部屋を数え直すことがある（引き継ぎは参加順の古い人から選ぶので、途中参加者がホストになるのはまれ）② 二重ホストの数秒（ADR-7）に両方が送る ③ 広告ブロッカーで送れない（下限として読む）④ デモモードは送らない。
+- **端末の中の真偽値**（`rehost`・`was_guest`・`after_practice`）：`localStorage` に「最後にホストした日」「最後にゲスト参加した日」「最後にひとり用を遊んだ日」を**日付（YYYY-MM-DD）だけ**置き、送るのは区分けだけ（08 §2.1 の方針どおり）。端末を見分ける ID は作らない・送らない。
+
+### 14.5 プライバシー
+
+**送らないもの（テストで確かめる）**
+
+| もの | 扱い |
+| --- | --- |
+| 名前・チャットの中身 | 送らない。送信関数は名前・チャットを受け取る引数を持たない |
+| 部屋コード | 送らない。URL は `/r` に置き換える。ハッシュ・参照元のパスも送らない |
+| プレイヤー ID（`p_…`、`localStorage`） | 送らない。部屋の記録のキー・中身にも入れない（コードはキーに入るが `sessionStorage` の中だけ） |
+| 端末・人を見分ける ID | SUKIMA は作らない。Cookie は使わない。Umami の応答（セッション用のトークン）は読まない・保存しない・次の送信に付けない（付けると端末の ID と同じになる。R-3）。ただし Umami 側は、届いた IP と UA から短い期間の訪問のまとまり（セッション）を自分で作り、同じ人の一連のイベントをつなげて持つ（M-4。説明文に書く） |
+| IP アドレス | こちらでは扱わない。送信の仕組み上 Umami のサーバーには届き、Umami は IP から国・地域を出す。Umami は IP を保存せず、日ごとに変わる値と混ぜて訪問者を数える、と説明している【要確認：検索では実装の説明が食い違った。塩の入れ替え周期も】 |
+| 参照元のオリジン・フル URL・検索語 | 送らない。許可一覧（§14.3）の名前か `other` だけ（オリジン自体が人や勤め先を指すことがあるため。M-2） |
+| ページの hostname | 実際の `location.hostname` ではなく**固定値**（`VITE_UMAMI_HOST`）を送る（M-3） |
+| ゲームの中身（お題・回答・スコア） | 送らない。送るのは表の値だけ（ゲーム ID・人数・区分け） |
+
+**送らない条件**（どれか 1 つでも当たれば送らない。**送るたびに**判定する）：
+
+1. デモモード（`isOnlineMode` が偽）
+2. 開発中（`import.meta.env.DEV`）、テスト（`import.meta.env.MODE === 'test'`）
+3. 送り先の値（`VITE_UMAMI_WEBSITE_ID`）が空
+4. **`location.hostname` が本番のホスト名（ビルド時の値 `VITE_UMAMI_HOST`、既定 `sukima-ee3.pages.dev`）と完全一致しない**（M-3）。Preview（`<枝>.sukima-ee3.pages.dev`）・`localhost`・`127.0.0.1`・`npm run preview`・他のサイトに置かれたコピー（`sukima-ee3.pages.dev.evil.com` など）はここで落ちる
+5. 利用者が「送らない」を選んだ（`localStorage` の `sukima:metrics:off`）。保存に失敗したとき（プライベートモードなど）は、タブの中の変数で「送らない」を保つ。値は `'1'`（送らない）・`'0'`（送る）・なし（初期。送る）だけを認め、読むと例外・それ以外の壊れた値は**送らない側**に倒す。押した瞬間から同じタブの次の送信が止まる（R-2）
+6. ブラウザの「追跡しない」設定：`navigator.doNotTrack`・`window.doNotTrack`（古い Safari など）が `'1'` か `'yes'`、または `navigator.globalPrivacyControl === true`。`navigator` が無い・読むと例外のときも送らない（R-1）
+
+- 録画・自動操作のスクリプト（`marketing/sns/`）は、`sukima:metrics:off` を立ててから本番を開く（SNS Marketer への依頼。M-3）。
+
+**説明文：要る**。理由：① D-12 の条件（匿名の計測）を利用者に分かる形で示す ② 電気通信事業法の外部送信規律（利用者の情報を外部へ送るときの「公表」など）が SUKIMA に当たるかは**要確認**だが、当たっても「公表」と「送らない設定」で足りる形にしておく【確認済み（検索）：規律は通知・公表・同意・オプトアウトのいずれかを求める】。
+
+- **置き場所**：ハッシュの画面 `#/privacy`（新設）。トップの一番下に「匿名の利用統計について」のリンク（08 §2.2 の一文を兼ねる）。**部屋とひとり用の画面にも、目立たない小さなリンク**（既存のメニュー・ルール欄・フッターなど、遊びの邪魔にならない所。場所は Client・Designer が決める）を置く。ゲストの多くは部屋の URL から直接入りトップを見ないので、そこから 1〜2 回の操作で届くようにする（外部送信規律の「公表」の考え方。M-5）。
+- **中身（Client が貼る案。文言は PdM・Security が確認）**：公表で求められる 3 項目（送る情報・送り先・目的）と「送らない」を揃える（M-4・M-5）。
+
+> **匿名の利用統計について**
+> - 目的：SUKIMA がどのくらい遊ばれているかを数えて、改善するためです。
+> - 送るもの：開いた画面の種類（トップ・ひとり用・部屋）、部屋を作った・ゲームを始めた・招待した、などの出来事と、その時の人数・ゲームの種類。来た元のサイトの種類（検索・SNS など）。画面の大きさ、言語、ブラウザの種類。
+> - 送らないもの：名前、チャット、部屋コード、遊んだ内容。
+> - 送り先：Umami Software, Inc. のアクセス解析サービス「Umami Cloud」。
+> - SUKIMA はあなたを見分ける番号を作らず、Cookie も使いません。ただし送り先の Umami は、届いた IP アドレス（ネットの住所）とブラウザの種類から、短い期間の訪問のまとまりと、おおまかな地域（国・地域）を出します（Umami は IP アドレスそのものは保存しないと説明しています）。
+> - この端末の中に、最後に遊んだ日付と「送らない」の設定だけを保存します（日付は送りません）。
+> - ほかに通信するところ：遊ぶための通信（Supabase）、文字の形（Google Fonts）、サイトの配信（Cloudflare）。これらのサービスにも、仕組み上、あなたの IP アドレスが届きます。
+> - 送りたくないとき：下の「送らない」を押すと、この端末からは送りません。
+> 　［送らない］／［送る］
+> ※ ブラウザで「追跡しない」を設定している場合は、最初から送りません。
+
+- 会社名「Umami Software, Inc.」は【要確認】（§14.10 の 8）。公開の前に Umami の規約・プライバシーの頁で正式名称と所在国を確かめて書く（確かめられないまま公開しない）。
+
+- **子どもが遊ぶ場合**（NORTH_STAR §4）：年齢は聞かない・送らない。そもそも個人の情報を集めないので、子ども向けの別の扱いは作らない。説明文はふりがななしでも読める短い言葉にする（上の案）。名前・チャットを送らないことは、子どもが本名を入れた場合にも効く。
+
+### 14.6 作りの方針
+
+- **置き場所**：計測は `logic.ts`・`engine.ts`・各ゲームの `logic.ts` に入れない（08 §2.1）。部屋の記録の判定は**純粋関数**（`src/lib/metrics.ts`）、送信は注入できる送り先を持つ小さな部品（`src/lib/analytics.ts`）、部屋の配線はフック（`src/room/useRoomMetrics.ts`）に置く。
+- **契約（`src/room/types.ts`）は変えない**。フックは `RoomHandle` を受け取るだけ。
+- **外部へ送らない仕組み（テスト）**：送り先 `sink` を必ず注入する。製品の送り先（`fetch` で Umami へ）を作るのは `createBrowserSink()` だけで、`createAnalytics` は「送らない条件」（§14.5）に当たると `sink` を呼ばない。テストは配列に積むだけの偽の `sink` を渡し、製品の送り先は作らない。加えて、テストの実行時（`MODE === 'test'`）は `createBrowserSink()` が何もしない送り先を返す（二重の止め）。
+- **送り方**：`fetch(送り先, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body })`。失敗は握りつぶす（遊びを止めない・再送しない）。握りつぶしは `try { ... } catch {}` に加えて **`fetch(...).catch(() => {})` も必須**（非同期の失敗は `try` で捕まらず、未処理の Promise の拒否になる）。`JSON.stringify` も `try` の中。応答は**読まない**（R-3）。送信は `useEffect` と画面の操作の後だけで呼び、`reduce`・描画中には呼ばない。送り先は `https://gateway.umami.is/api/send`【要確認：古い説明は `cloud.umami.is/api/send`】。`sendBeacon` は JSON だと CORS の事前確認に当たるので使わない。
+- **送りすぎの止め**：1 タブあたり 1 時間に 60 件まで（`useEffect` の不具合で無限に送り、無料枠を食いつぶすのを防ぐ）。加えて種類ごとの上限を部屋の記録（`sessionStorage`）で持つ：`game_start` は 1 部屋 30 件まで、`room_enjoyed` は 1 部屋 1 回（偽の状態で `startedAt` だけ変え続けられても、60 件より手前で止まる。R-5）。
+- **二段目の検査**（R-4）：`createAnalytics.track` の側でも、`data` のキーが §14.3 の表のものか、値が文字列（50 文字以下・`game` は登録の一覧のもの）・整数・真偽のどれかかを見て、外れたらそのイベントを送らない（`metrics.ts` に不具合があっても外に出ない）。
+- **`observeRoom` の入力の検証（M-1。仕様）**：
+  - `state.game.id` が `gameIds`（`src/games/registry.ts` の ID の一覧。呼び出し側のフックが渡す）にないときは、記録を変えず、イベントも返さない。
+  - `state.game.players.length` が 1〜10 の整数でないときも同じ。`peak` は数えた状態の人数からだけ作るので、常に 1〜10 の整数。
+  - `metrics.ts` が registry を直接 import しないのは、registry が各ゲームの View（React）を読み込み、純粋関数のテストが重くなるため。
+
+```ts
+// src/lib/metrics.ts（純粋関数。時刻は引数）
+export type MetricEvent =
+  | { name: 'room_create'; data: { src: Src; rehost: '7d' | '28d' | 'no'; was_guest: boolean; after_practice: boolean } }
+  | { name: 'invite_share'; data: { method: 'share' | 'copy' | 'qr'; n: number } }
+  | { name: 'room_join'; data: { via: 'qr' | 'code' | 'link' } }
+  | { name: 'game_start'; data: { game: string; n: number; seq: 1 | 2 | 3 | 4 | 5; wait?: WaitBucket } }
+  | { name: 'room_enjoyed'; data: { peak: number; game: string } }
+  | { name: 'room_error'; data: { kind: 'failed' | 'notfound' | 'full' } }
+  | { name: 'practice_over'; data: { stage: '1-4' | '5-9' | '10-14' | '15+'; best: boolean } }
+  | { name: 'rules_open'; data: { game: string } };
+export type Src = 'stream' | 'x' | 'tiktok' | 'guide' | 'none' | 'other';
+export type WaitBucket = '0-1' | '1-3' | '3-5' | '5-10' | '10+';
+export type RoomTally = { games: number; peak: number; enjoyed: boolean; lastStartedAt: number | null; createdAt: number | null; startsSent: number };
+export type RefName = 'google' | 'yahoo' | 'bing' | 'duckduckgo' | 'x' | 'line' | 'instagram' | 'facebook' | 'youtube' | 'twitch' | 'tiktok' | 'discord' | 'hatena' | 'other';
+
+export const emptyTally = (createdAt: number | null): RoomTally;
+// 状態を 1 つ受け取り、新しい記録と送るイベントを返す。isHost が偽なら events は常に空。
+// game.id が gameIds にない・人数が 1〜10 の整数でない状態は、記録を変えずに events を空で返す（M-1）
+export const observeRoom = (t: RoomTally, state: RoomState, isHost: boolean, now: number, gameIds: ReadonlySet<string>): { tally: RoomTally; events: MetricEvent[] };
+export const parseSrc = (search: string): Src;            // '?s=stream' → 'stream'。許可外は 'other'、なしは 'none'
+export const parseVia = (search: string): 'qr' | null;    // '?via=qr' だけ認める
+export const routePath = (hash: string): '/' | '/practice' | '/r' | null; // '#/privacy' は null（ページ表示を送らない。R-9）
+export const referrerName = (referrer: string, selfOrigin: string): RefName | ''; // 許可一覧（§14.3）の名前か 'other'。空・自分なら ''（M-2）
+export const rehostBucket = (lastHostDay: string | null, today: string): '7d' | '28d' | 'no';
+export const stageBucket = (cleared: number): '1-4' | '5-9' | '10-14' | '15+';
+export const waitBucket = (ms: number): WaitBucket;
+
+// src/lib/analytics.ts
+export type Payload = { type: 'event'; payload: { website: string; hostname: string; url: string; referrer: string; language: string; screen: string; title: string; name?: string; data?: Record<string, string | number | boolean> } };
+export type Sink = (p: Payload) => void;
+// env.hostname は location.hostname ではなく VITE_UMAMI_HOST の固定値（M-3）。gameIds は二段目の検査用（R-4）
+export type AnalyticsDeps = { sink: Sink; websiteId: string; enabled: () => boolean; now: () => number; gameIds: ReadonlySet<string>; env: { hostname: string; language: string; screen: string } };
+export const createAnalytics = (deps: AnalyticsDeps): { pageview(url: string, referrer?: string): void; track(e: MetricEvent, url: string): void };
+export const createBrowserSink = (): Sink;               // MODE === 'test' では何もしない送り先
+export const metricsAllowed = (): boolean;               // §14.5 の「送らない条件」1〜6 をまとめて判定。送るたびに呼ぶ。例外は false
+export const setMetricsOptOut = (off: boolean): void;     // localStorage 'sukima:metrics:off'
+export const analytics: ReturnType<typeof createAnalytics>; // 製品用の 1 つ（main から使う）
+```
+
+- `title` は常に `SUKIMA`、`screen` は `"${screen.width}x${screen.height}"`（Umami の端末の区分けに使われる）。ページの `document.title` や `location.href` は使わない。
+- `url` は `routePath` の値に、許可した印（`?s=…`）だけを付けたもの。`routePath` が `null`（`#/privacy`）ならページ表示を送らない。
+- `hostname` は常に `VITE_UMAMI_HOST` の固定値。`referrer` は `referrerName` の名前を §14.3 の固定の URL に置き換えたもの（空なら空）。
+
+### 14.7 作業票
+
+#### Backend（約 1.5 人日）
+
+| # | 内容 | 完了の条件 |
+| --- | --- | --- |
+| M-B1 | `src/lib/metrics.ts`：§14.6 の型と純粋関数。`observeRoom` は §14.4 の手順どおり（ホストのときだけイベントを返す、`room_enjoyed` は初めて条件を満たした 1 回だけ、`seq` は 5 で頭打ち、`wait` は `createdAt` があり `seq === 1` のときだけ）。**`game` は `gameIds` の一覧にあるときだけ、`n`・`peak` は 1〜10 の整数だけ（外れた状態は数えず送らない。M-1）**。`game_start` は 1 部屋 30 件まで（R-5）。`referrerName` は §14.3 の許可一覧（M-2）。`routePath('#/privacy')` は `null`（R-9） | 単体テスト（`src/__tests__/metrics.test.ts`）：① ゲスト→ホスト交代でも `seq` が続き、`room_enjoyed` が全端末を通して 1 回 ② 2 人で 2 ゲーム・3 人で 1 ゲームでは送らない ③ 同じ `startedAt` の状態を何度受けても数えない ④ `parseSrc` が許可外を `other` にする ⑤ `routePath('#/r/ABCD')` が `/r`、`'#/privacy'` が `null` ⑥ `referrerName` が一覧のドメイン（サブドメインを含む）を名前に、`https://taro-yamada.github.io/x`・`http://192.168.0.10:3000`・`https://intra.example.co.jp`・`https://evilgoogle.com`・`http://www.google.com`・`file:///`・`not a url` を `other` に、空・自分のオリジンを空にする ⑦ 区分けの境界値 ⑧ **登録にない `game.id`・11 人以上・0 人・小数の人数の状態で、返すイベントの `game` が一覧内、`n`・`peak` が 1〜10 の整数に収まる（または返さない）** ⑨ `startedAt` だけ変えた状態を 500 回で `game_start` が 30 件で止まる |
+| M-B2 | `src/lib/analytics.ts`：送信の部品。送り先の注入、送らない条件（§14.5 の 1〜6。送るたびに判定）、1 時間 60 件の上限、失敗の握りつぶし（`fetch(...).catch` まで）、応答を読まない、二段目の検査、`hostname` の固定 | テスト：偽の `sink` で ① 送らない条件それぞれで 0 件（`hostname` が `abc.sukima-ee3.pages.dev`・`localhost`・`sukima-ee3.pages.dev.evil.com`・`127.0.0.1`、DNT の `'1'`・`'yes'`・`window.doNotTrack`・GPC、`navigator` の読み取りが例外、「送らない」の値が壊れている・保存が例外を投げる、を含む）② 61 件目を捨てる ③ `sink` が例外を投げても、`fetch` が拒否しても、呼び出し側にも未処理の Promise にも漏れない ④ **どのイベントの送信内容を `JSON.stringify` しても、部屋コード・名前・プレイヤー ID・チャット文が含まれない**（疑似ネットワーク `createSimRoom` で名前・チャット・コードを入れた部屋を回し、全端末の `observeRoom` の出力を `createAnalytics` に通して確かめる）⑤ `createBrowserSink()` がテストの実行時に `fetch` を呼ばない（`globalThis.fetch` を数えるだけの関数に差し替えて 0 回。時計の偽装ではない）⑥ 表にないキー・51 文字以上の文字列・一覧にない `game`・オブジェクトの値を含むイベントを `track` に直接渡すと 0 件（R-4）⑦ 送信内容の `hostname` が常に固定値、`referrer` が固定の URL か空 ⑧ 偽の `fetch` がトークン入りの応答を返しても、次の送信が同じ形（R-3） |
+| M-B3 | `src/room/useRoomMetrics.ts`：`useRoomMetrics(room: RoomHandle, opts: { create: boolean })`。部屋の記録を `sessionStorage` に読み書きし、`room.state` が変わるたびに `observeRoom`（`gameIds` は registry の ID の一覧）を呼んで送る。`room_create`（create が真で初めて `ready`）・`room_join`（ゲストで初めて自分がメンバー。同じタブ・同じ部屋で 1 回）・`room_error`（`failed` / `notfound` / `full` を初めて出したとき）もここで送る。`localStorage` の「最後にホスト／ゲスト参加した日」を更新する | `useRoom.ts`・`engine.ts`・`types.ts` を変えない。ストレージが使えない（プライベートモード）ときも例外を出さず、送らないか数え直すだけ |
+| M-B4 | ビルド時の値：`VITE_UMAMI_WEBSITE_ID`（空なら送らない）、`VITE_UMAMI_HOST`（本番のホスト名。空なら `sukima-ee3.pages.dev`。§14.5 の条件 4 と payload の `hostname` に使う）、`v`（`package.json` の version）。`vite-env.d.ts` の型 | `npm run typecheck`・`test`・`build` が通る。`.env.local` の例を README に書くのは Client |
+| M-B5 | §13 に実装で決めた点を書き足す | — |
+
+- `v` の埋め込みに `vite.config.ts` の `define` が要る場合は、オーケストレーターの担当なので依頼として出す（`import.meta.env` で済むならそれでよい）。
+
+#### Client（約 1 人日）
+
+| # | 内容 | 完了の条件 |
+| --- | --- | --- |
+| M-C1 | `main.tsx`（または `App.tsx`）：起動時に `?s=` と `?via=` を読み、タブの中（モジュール変数＋`sessionStorage`）に置いてから、`history.replaceState` でアドレス欄から消す（リロード・共有で印が広がらないように）。画面が変わるたびに `analytics.pageview(routePath(location.hash) + 印)`（`null` なら送らない）。参照元は最初の 1 回だけ（`referrerName`） | 部屋の URL をコピー・共有しても `?s=`・**`?via=`** が付かない（R-10）。ハッシュの遷移でページ表示が 1 回ずつ。`#/privacy` を開いてもページ表示を送らない（R-9） |
+| M-C2 | `Room.tsx`：`useRoomMetrics(room, { create })` を 1 行。招待の共有・コピーが成功したとき（`shared` / `copied`）と QR を開いたときに `invite_share` | キャンセル（`aborted`）・失敗は送らない |
+| M-C3 | `share.ts`：`roomUrl(code, { via: 'qr' })` で `?via=qr` を付けた URL を作れるようにし、QR だけに使う（`https://…/?via=qr#/r/ABCD`）。招待の共有・コピーは今のまま | QR を読んだ端末で `room_join.via` が `qr`。Cloudflare Pages で `/?via=qr` が開けること（実機で 1 回） |
+| M-C4 | `Home.tsx`：コードを入れて参加したときに、`room_join.via = 'code'` になる印を渡す（`goRoom` の前にモジュール変数を立てるなど） | — |
+| M-C5 | `Practice.tsx`：1 回の挑戦が終わったら `practice_over`。`localStorage` の「最後にひとり用を遊んだ日」を更新（関数は Backend の `metrics.ts` を使う） | — |
+| M-C6 | ルールの折りたたみ（J-26）を開いたときに `rules_open` | J-26 の実装に合わせる |
+| M-C7 | `#/privacy` の画面（§14.5 の文、「送らない／送る」の切り替え）と、トップの一番下のリンク、**部屋とひとり用の画面の目立たない小さなリンク**（M-5） | 幅 360px で崩れない。切り替えが再読み込み後も残る。保存に失敗したときは「この端末では設定を保存できません」と出し、同じタブでは送らないを保つ（R-2）。**部屋・ひとり用の画面から 1〜2 回の操作で説明に届き、戻ると部屋に戻れる（部屋を抜けない）**。説明文に送り先の正式名称と目的がある（M-5） |
+| M-C8 | README：計測の値（`VITE_UMAMI_WEBSITE_ID`・`VITE_UMAMI_HOST`）、**Cloudflare の Production だけに入れ、Preview には入れないこと**（M-3）、デモ・開発・本番以外のホスト名では送らないこと | — |
+
+#### Security
+
+- 確認観点は §14.8。設計の段階で 1 回、Backend・Client の実装の後に 1 回。結果は `docs/dev/05-security-report.md` に、足りないテストは `src/__tests__/security-metrics.test.ts` に書く。
+
+#### PO（初回 15 分・その後 週 2 分）
+
+1. **Umami Cloud に登録する（10 分）**：`https://cloud.umami.is` を開いて登録（メールか GitHub。クレジットカードが要るかは要確認）。「Add website」で、名前 `SUKIMA`、ドメイン `sukima-ee3.pages.dev` を入れる。表示された **Website ID**（`xxxxxxxx-xxxx-…` の形）をコピーする。**2 段階認証があればオンにする。「Share URL」（公開のダッシュボード）は作らない**（地域・時刻・端末のつながった記録が誰にでも見えるため。R-7）。
+2. **Cloudflare に入れる（5 分）**：Cloudflare の SUKIMA のプロジェクト →「Settings」→「Variables and Secrets」で、**「Production」だけに** `VITE_UMAMI_WEBSITE_ID` ＝ 1 の値を「Text」で足し、「Retry deployment」で作り直す（`docs/dev/11-launch-guide.md` §2-4 と同じ操作）。Preview には入れない（試作の版を数えないため）。Website ID は公開されてよい値。
+3. **確かめる（1・2 の 15 分に含む）**：公開されたサイトを開き、Umami の画面の「Realtime」に 1 人出れば完了。
+4. **週 1 回（2 分）**：Umami の「Events」で、期間を「過去 7 日」にして `room_enjoyed` の件数を見て、チャットに送る（スクリーンショット 1 枚でよい）。11 §6 の週 5 分の確認と同じ日に行う。AI が自分で見る案は PO 判断 2。
+- 実装がマージされたら、CTO が 11 の手順書に 1〜4 を移す。
+- 保存は 6 か月なので、週の数字は AI が `docs/` に書き写して残す（PdM。08 の記録の表）。書き写すのは**週の件数などの集計だけ**。Realtime・地域・セッションの画面のスクリーンショットは `docs/` に貼らない（R-7）。
+
+#### Security の推奨（05 §8.2）の取り込み
+
+| # | 扱い | 入れた所・入れない理由 |
+| --- | --- | --- |
+| R-1 | 入れる | §14.5 の条件 6、M-B2 ① |
+| R-2 | 入れる | §14.5 の条件 5、M-B2 ①、M-C7 |
+| R-3 | 入れる | §14.6 の送り方、§14.5 の表、M-B2 ③⑧ |
+| R-4 | 入れる | §14.6 の二段目の検査、M-B2 ⑥ |
+| R-5 | 入れる | §14.6 の送りすぎの止め（`game_start` は 1 部屋 30 件）、M-B1 ⑨ |
+| R-6 | **今回は入れない** | CSP（`public/_headers`）はまだ無く、入れるなら Supabase・Google Fonts まで含めた別の票になる。CSP の票を立てるときに `connect-src` に `gateway.umami.is` を足し `script-src` に足さないこと、`Referrer-Policy: strict-origin-when-cross-origin` の明示を完了条件にする（Referrer-Policy は今のブラウザの既定と同じで、今回の差は小さい） |
+| R-7 | 入れる | PO の手順 1、書き写しの決まり（上） |
+| R-8 | 入れる（判断の条件として） | §14.9 の 2（B は API キーを閲覧だけに限れると分かってから） |
+| R-9 | 入れる | `routePath` が `null`、M-B1 ⑤、M-C1 |
+| R-10 | 入れる | M-C1 の完了条件 |
+
+### 14.8 Security のレビューが要る点
+
+実装の**前**（設計）と**後**（コード）の 2 回。**1 回目は済み**（05 §8、2026-11-21。必須 M-1〜M-5 は本節に反映）。2 回目は実装の後に、05 §8.4 の再現テスト（`src/__tests__/security-metrics.test.ts`）を Security が書いて行う。
+
+1. 送信内容に部屋コード・名前・チャット・プレイヤー ID・ハッシュ・参照元のパスが入らないこと（M-B2 ④ のテストが十分か）。`game` の値がゲーム ID の一覧の中だけか（登録にない ID を送らない）
+2. 外部へ通信する先が 1 つ増えること（`gateway.umami.is`）。将来 CSP（`_headers`）を入れるなら `connect-src` に足す。Umami のスクリプトを読み込まないこと
+3. 「送らない条件」（デモ・開発・テスト・値が空・送らない設定・追跡しない設定）がすべて効くこと。Preview の版で送らないこと
+4. 1 時間 60 件の上限で、不具合や悪意の操作（ホストの「もう一度」の連打など）で無料枠を食いつぶさないこと。他の端末から届くメッセージで送信を起こせる経路が、状態の変化（ゲーム開始）だけであること
+5. `sessionStorage`・`localStorage` に置く値（日付・部屋の記録）が送られないこと、壊れた値を読んでも例外を出さないこと
+6. 説明文（§14.5）の内容が実装と一致していること。外部送信規律の「公表」として足りるか【要確認】
+7. Umami Cloud 側：IP の扱い・データの置き場所（国）・保存期間【要確認】。PO のアカウントの守り（2 段階認証があれば使う）
+
+### 14.9 PO 判断事項
+
+| # | 決めること | 推奨 | 理由 |
+| --- | --- | --- | --- |
+| 1 | 計測の道具を **Umami Cloud（無料）**にし、PO の名前で登録する | 採る | 北極星・V-1・V-2 が測れて、費用 0 円・初回 15 分。D-12 の候補どおり |
+| 2 | 週の数字の確かめ方：A. PO が週 1 回、画面の数字を送る（週 2 分）／ B. Umami の API キーを AI に渡し、AI が取りに行く（PO の手間 0。ただし秘密の値を 1 つ預けることになり、`api.umami.is` への接続の許可が要る。Hobby で API が使えるかは要確認） | **まず A**。B は API が使えて、**キーを閲覧だけに限れる**と分かってから（R-8） | B は秘密の値の扱いが増える。限れないキーでは設定の変更・データの削除までできる。週 2 分なら NORTH_STAR §5 の 1 番に大きく反しない |
+| 4 | §14.11 の受け入れるリスク（R-09〜R-14）を了承する。R-11 は A／B を選ぶ | 全部了承。R-11 は **A** | Security も同じ意見（05 §8.3） |
+| 5 | 参照元の許可一覧（§14.3）の初期案 | 仮置きのまま実装に入り、Marketing・PdM が足し引きする | 一覧にないものは `other` に入るだけで、後から足せる |
+| 3 | 無料枠の 70%（月 7 万件）を超えたら、Pro（月 20 ドル）に移るか、自前に移るか | そのときに決める（今は決めない） | 超えるのは部屋が月 3,000 を超えたころ【仮定】で、それ自体が良い兆候 |
+
+- V-3 の Google Search Console の登録（10 分）は、説明ページを出すとき（2027 年 1 月）に別に出す。
+
+### 14.10 要確認の一覧
+
+1. Umami Cloud の Hobby の上限（月 10 万イベント・サイト 1 つ・保存 6 か月）と、**超えたときに止まるか・課金されるか**。登録でクレジットカードが要るか
+2. Umami Cloud の送り先（`gateway.umami.is/api/send` か `cloud.umami.is/api/send` か）と、ブラウザから直接送ったときに CORS で受け付けるか（Umami のスクリプト自身が同じ送り方なので受け付ける見込み）
+3. Umami の IP の扱い（保存しない・日ごとの値と混ぜる、の実装）と、データの置き場所（国）
+4. Hobby で、イベントの項目（`peak`・`src` など）ごとの集計画面が使えるか。API キーが使えるか（PO 判断 2）
+5. 広告ブロッカーが `gateway.umami.is` を止めるか（止めるなら数は下限として読み、必要なら Pages Functions で中継）
+6. Cloudflare Web Analytics が独自イベントを送れないこと・Cookie を使わないことの公式の記述（比べた結論は変わらない見込み）
+7. 外部送信規律が SUKIMA（利用者どうしのチャットを含む個人運営のサイト）に当たるか（当たっても §14.5 の公表と「送らない」で足りる形にしてある。専門家への確認はしない前提で PO に了承を求める：§14.11 R-14）
+8. Umami Cloud の運営会社の正式名称（Umami Software, Inc. か）と所在国。セッションの値（IP＋UA に混ぜる塩）の入れ替え周期
+9. Umami の `/api/send` が、URL でない・固定の URL の `referrer` をどう集計するか（§14.3 の固定の URL で足りるか）
+
+**参照（検索結果。2026-11-21）**：[Umami Cloud FAQ](https://docs.umami.is/docs/cloud/faq)、[Umami Sending stats](https://docs.umami.is/docs/api/sending-stats)、[Umami Track events](https://docs.umami.is/docs/track-events)、[Umami: GDPR compliant website analytics](https://umami.is/blog/gdpr-compliant-website-analytics)、[Cloudflare Web Analytics for SPAs](https://developers.cloudflare.com/web-analytics/get-started/web-analytics-spa/)、[総務省 外部送信規律](https://www.soumu.go.jp/main_sosiki/joho_tsusin/d_syohi/gaibusoushin_kiritsu.html)
+
+### 14.11 受け入れるリスク（PO 判断用。05 §8.3 の要約）
+
+どれも遊ぶ人の害は小さく、防ぐ手間の方が大きいため「受け入れる」を勧める（Security も同意）。了承をもらってから実装に入る。
+
+| ID | どういうことか（平易に） | 勧め |
+| --- | --- | --- |
+| R-09 | 誰でも偽の数字を送れるので、数字が水増しされることがある（遊ぶ人の害はない）。週の確認で不自然な山を見て、続いたら送り方を変える（§14.2） | 受け入れる |
+| R-10 | 計測サービスの画面を見られる人なら、「何時ごろ・どの地域で・何人で・何を遊んだか」から特定の集まりを推測できる。名前や会話は入らない。見られるのは PO のアカウントだけ | 受け入れる |
+| R-11 | 海外（EU）の規則では、端末に日付を保存するのに同意が要るとされうる。A：このまま（説明と「送らない」で足りるとみる）／B：日付を保存しない（「前にも遊んだ人か」が分からなくなる） | 受け入れる（A） |
+| R-12 | ページを開いた最初の 1 件は、「送らない」を押す前に送られる（送るのは画面の種類だけ）。「追跡しない」の設定の人には最初から送らない | 受け入れる |
+| R-13 | 広告ブロッカーなどで数が欠ける。数字は「少なくともこれだけ」と読む | 受け入れる |
+| R-14 | 法律（外部送信規律）に当たるかを専門家には確かめていない。当たっても足りる形（送るもの・送り先・目的の説明と「送らない」）にはしてある | 受け入れる（専門家への確認は今はしない） |

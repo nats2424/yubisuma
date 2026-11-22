@@ -3167,3 +3167,127 @@ button.card {
     grid-column: 1 / -1;
   }
 }
+
+/* ---------- 匿名の利用統計（#/privacy・M-C7） ---------- */
+/* どの画面でも一番下に小さく置き、遊びの邪魔をしない。押せる高さ（44px）だけは確保する */
+.site-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0 10px;
+  padding: 0 16px 28px;
+  text-align: center;
+}
+
+.room-foot {
+  padding: 0;
+  /* ロビーの並び（order 0〜3）より後ろ、いつも部屋の画面の一番下に置く */
+  order: 9;
+}
+
+.foot-link {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  min-height: 44px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.foot-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.privacy-main {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 18px 16px 40px;
+}
+
+.privacy-body {
+  display: grid;
+  gap: 14px;
+  text-align: left;
+}
+
+.privacy-list {
+  margin: 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.privacy-switch {
+  display: grid;
+  gap: 8px;
+}
+
+.privacy-switch .label {
+  margin: 0;
+}
+
+.privacy-switch .segmented {
+  max-width: 320px;
+}
+
+.privacy-status {
+  margin: 0;
+  min-height: 1.2em;
+  font-size: 13px;
+  color: var(--bad);
+}
+
+.privacy-body .note {
+  text-align: left;
+}
+
+.privacy-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(0 0 0 / 0.6);
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+.privacy-dialog {
+  background: var(--surface);
+  color: var(--text);
+  border: var(--stroke) solid var(--line);
+  border-radius: 20px;
+  padding: 16px;
+  width: min(100%, 560px);
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  gap: 10px;
+  animation: sheet-up 0.2s ease-out;
+}
+
+.privacy-dialog .panel-head h2 {
+  font-size: 17px;
+}
+
+/* 「送るもの」の内訳。項目が多いので、360px でも 1 つずつ読めるよう箇条書きに分ける */
+.privacy-sublist {
+  margin: 4px 0 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: 4px;
+  list-style: circle;
+}

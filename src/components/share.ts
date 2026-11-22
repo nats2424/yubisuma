@@ -4,7 +4,9 @@ export type ShareResult = 'shared' | 'copied' | 'aborted' | 'failed';
 
 // 公開しているページの基準 URL（ルート公開でもサブパス公開でも、今のページの場所から作る）
 const baseUrl = () => `${location.origin}${location.pathname}`;
-export const roomUrl = (code: string) => `${baseUrl()}#/r/${code}`;
+// QR だけは ?via=qr を付け、QR から入った参加を数えられるようにする（M-C3）。
+// コピー・共有する URL には付けない（貼られた先で印が広がり、数えが狂うため。R-10）
+export const roomUrl = (code: string, opts?: { via: 'qr' }) => `${baseUrl()}${opts?.via === 'qr' ? '?via=qr' : ''}#/r/${code}`;
 export const practiceUrl = () => `${baseUrl()}#/practice`;
 
 // 招待文（J-03）。受け取った人が「何をするのか・登録不要・タップで入れる」をひと目で分かるようにする

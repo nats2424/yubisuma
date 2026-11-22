@@ -3,6 +3,7 @@ import { goRoom } from '../App';
 import { CATEGORIES, gamesIn } from '../games/registry';
 import { CATEGORY_INFO } from '../games/types';
 import { generateRoomCode, getSavedName, NAME_MAX, normalizeRoomCode, ROOM_CODE_LENGTH, saveName } from '../lib/identity';
+import { markJoinByCode } from '../lib/analytics';
 import { isOnlineMode } from '../lib/transport';
 import { MAX_ROOM_PLAYERS } from '../room/logic';
 import { TUNING } from '../games/micro/tuning';
@@ -37,6 +38,8 @@ export default function Home() {
       setError(`${ROOM_CODE_LENGTH}文字のルームコードを入力してください`);
       return;
     }
+    // コードを入れて参加した印（room_join.via = 'code'。M-C4）
+    markJoinByCode();
     goRoom(c);
   };
 
@@ -137,6 +140,13 @@ export default function Home() {
           </section>
         ))}
       </main>
+      {/* 匿名の利用統計の説明（M-C7）。08 §2.2 の「トップの下部の一文」を兼ねる */}
+      <footer className="site-foot">
+        <a className="foot-link" href="#/privacy">
+          匿名の利用統計について
+        </a>
+        <span className="foot-note">名前・チャット・部屋コードは送りません</span>
+      </footer>
     </div>
   );
 }

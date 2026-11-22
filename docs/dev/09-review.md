@@ -163,3 +163,18 @@
 2. 人数が変わるとゲームの並びがその場で入れ替わり、押し間違えのおそれ。動きを抑える（Client／Designer）
 3. UnknownGame の文言を、削除したゲームにも合う「このゲームは今のバージョンでは遊べません」に（Client）
 4. 公開直後は古い版の端末と混ざるので、再読み込みの案内を手順書に（CTO、任意）
+
+---
+
+## 最小計測（J-23・§14）のレビュー（2026-11-22）
+
+- 対象：`f4b09dc..HEAD`（src・README.md・.env.example）
+- 判定：**Approve**（必須の指摘なし）。テスト 333 件通過。JS は gzip で +6.85KB
+- 確認：純粋関数・unknown での絞り込み・any なし。送信は useEffect／イベントハンドラ／タイマーの中だけで二重送信なし。`VITE_UMAMI_WEBSITE_ID` 未設定なら送信もストレージ書き込みもしない。例外・失敗で画面を止めない。説明文と実装が一致
+
+### 推奨（次の作業で対応）
+1. Privacy.tsx の「この端末からの送信：送る」は opt-out だけを見ている。`metricsAllowed()` を見て、実際に送らない状態ならそう表示する（Client）
+2. `design/implemented/privacy-*-dialog-*.png` が古い文言のまま。撮り直し（Client）
+3. Practice.tsx のリンクを隠す条件とコメントのずれ（Client）
+4. 同じハッシュのままの遷移で pageview が 1 件抜ける（軽微、記録のみ）
+5. 送り先 `gateway.umami.is` と運営会社名が【要確認】。Website ID を本番に入れる前に確かめる（CTO・Security・PO の登録時）
