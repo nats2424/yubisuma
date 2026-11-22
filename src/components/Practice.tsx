@@ -5,8 +5,10 @@ import MicroStage from '../games/micro/MicroStage';
 import StageTrack from '../games/micro/StageTrack';
 import { speedForStage, speedUpRuleText, TUNING } from '../games/micro/tuning';
 import { goRoom } from '../App';
+import { trackPracticeOver } from '../lib/analytics';
 import { generateRoomCode, getSavedName, NAME_MAX, saveName } from '../lib/identity';
 import { Brand } from './Layout';
+import { PrivacyLink } from './Privacy';
 import { practiceUrl, recordText, shareOrCopy } from './share';
 import { Panel } from './ui';
 
@@ -66,6 +68,8 @@ export default function Practice() {
           saveBest(cleared);
         }
         setMode({ kind: 'over', cleared, newBest });
+        // 1 回の挑戦の終わり（M-C5）。描画中ではなくタイマーの中で送る
+        trackPracticeOver(cleared, newBest);
         return;
       }
       const next = stage + 1;
@@ -191,6 +195,12 @@ export default function Practice() {
         </a>
       </header>
       <main className="practice-main">{body}</main>
+      {/* 遊びの邪魔にならないよう、挑戦中は出さない（説明はモーダルで開くので、開いても挑戦は途切れない） */}
+      {mode.kind !== 'challenge' && mode.kind !== 'single' && (
+        <footer className="site-foot">
+          <PrivacyLink />
+        </footer>
+      )}
     </div>
   );
 }

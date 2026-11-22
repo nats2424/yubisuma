@@ -84,6 +84,16 @@ VITE_SUPABASE_ANON_KEY=eyJ...
 - クライアントに含めてよいのは anon キーだけです。`service_role` キーや `sb_secret_` で始まるキーは絶対に設定しないでください。
 - 共有したときのプレビュー（OGP）は `index.html` に書いてあり、画像は `public/ogp.png`（1200×630）を使います。公開アドレスを変えたら `og:url`・`og:image` も直してください。
 
+### 匿名の利用統計（Umami Cloud）
+
+遊ばれ方を数えるための匿名の計測です（設計は [`docs/dev/02-architecture.md`](docs/dev/02-architecture.md) §14、利用者向けの説明は画面の `#/privacy`）。名前・チャット・部屋コード・プレイヤー ID は送りません。
+
+- `VITE_UMAMI_WEBSITE_ID`：Umami Cloud の Website ID。**Cloudflare の Production だけに入れ、Preview には入れません**（試作の版を数えないため）。空なら何も送りません。
+- `VITE_UMAMI_HOST`：本番のホスト名（未設定なら `sukima-ee3.pages.dev`）。公開アドレスを変えたときだけ設定します。
+- 次のどれかに当たると送りません：デモモード（Supabase 未設定）、`npm run dev`・テスト、Website ID が空、ページのホスト名が `VITE_UMAMI_HOST` と完全一致しない（Preview の `<枝>.sukima-ee3.pages.dev`・`localhost`・`npm run preview`・他サイトのコピー）、`#/privacy` で「送らない」を選んだ、ブラウザの「追跡しない」・GPC がオン。
+- ローカルの `.env.local` には `VITE_UMAMI_WEBSITE_ID` を入れなくてかまいません（入れても `localhost` では送りません）。
+- 録画・自動操作で本番を開くときは、先に `localStorage` の `sukima:metrics:off` を `1` にします。
+
 ### サブパスで公開する（GitHub Pages など）
 
 `https://<ユーザー名>.github.io/yubisuma/` のようにサブパスに置く場合は、ビルド時に `VITE_BASE=/yubisuma/` を設定します。JS・CSS・favicon が `/yubisuma/` 配下を指していることを、次のコマンドで確認できます。
