@@ -93,6 +93,11 @@ VITE_SUPABASE_ANON_KEY=eyJ...
 - 次のどれかに当たると送りません：デモモード（Supabase 未設定）、`npm run dev`・テスト、Website ID が空、ページのホスト名が `VITE_UMAMI_HOST` と完全一致しない（Preview の `<枝>.sukima-ee3.pages.dev`・`localhost`・`npm run preview`・他サイトのコピー）、`#/privacy` で「送らない」を選んだ、ブラウザの「追跡しない」・GPC がオン。
 - ローカルの `.env.local` には `VITE_UMAMI_WEBSITE_ID` を入れなくてかまいません（入れても `localhost` では送りません）。
 - 録画・自動操作で本番を開くときは、先に `localStorage` の `sukima:metrics:off` を `1` にします。
+- 来た元の印は `?s=` を**ハッシュの前**に付けます（例：`https://sukima-ee3.pages.dev/?s=yt-bio`）。`#/?s=yt-bio` のようにハッシュの中に書くと数えられません。
+
+### 録画モード（SNS 用の自動録画。デモモードのときだけ）
+
+Supabase 未設定のデモモードで `?rec=1&seed=123&topic=ビール&micro=balloon,color,math&name=たろう#/r/ABCD` のように開くと、乱数がシード付きになり、お題・ミニゲームの順・名前を URL で指定できます（設計は `docs/dev/02-architecture.md` §13.3）。デモモードの帯・利用統計の説明リンクは出ません。録画用のクエリはアドレス欄に残るので、再読み込みで同じ展開を撮り直せます。本番（Supabase 設定あり）では無効です。
 
 ### サブパスで公開する（GitHub Pages など）
 

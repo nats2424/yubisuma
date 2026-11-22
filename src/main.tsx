@@ -2,7 +2,13 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import ErrorBoundary, { CrashScreen } from './components/ErrorBoundary';
 import { captureEntryMarks, trackPageview } from './lib/analytics';
+import { startRecordingMode } from './lib/recording';
+import { isOnlineMode } from './lib/transport';
 import './styles.css';
+
+// 録画モード（デモモードのときだけ有効）。乱数・お題の差し替えは、最初のページ表示・画面の描画より前に済ませる。
+// 録画用のクエリ（rec・seed・topic・micro・name）はアドレス欄に残す：再読み込みで同じ展開を撮り直せるように
+startRecordingMode(location.search, isOnlineMode);
 
 // 入口の印（?s= 来た元・?via=qr QR から）をタブの中に移してから、アドレス欄から消す（M-C1・R-10）。
 // 残すと、リロードで数え直したり、このページの URL を共有したときに印が広がったりするため。ほかのクエリは残す
