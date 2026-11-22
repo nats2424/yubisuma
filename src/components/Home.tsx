@@ -4,6 +4,7 @@ import { CATEGORIES, gamesIn } from '../games/registry';
 import { CATEGORY_INFO } from '../games/types';
 import { generateRoomCode, getSavedName, NAME_MAX, normalizeRoomCode, ROOM_CODE_LENGTH, saveName } from '../lib/identity';
 import { markJoinByCode } from '../lib/analytics';
+import { recordingConfig, isRecordingMode } from '../lib/recording';
 import { isOnlineMode } from '../lib/transport';
 import { MAX_ROOM_PLAYERS } from '../room/logic';
 import { TUNING } from '../games/micro/tuning';
@@ -11,7 +12,10 @@ import GameIcon from './GameIcon';
 import { Brand, DemoBanner } from './Layout';
 
 export default function Home() {
-  const [name, setName] = useState(getSavedName);
+  const [name, setName] = useState(
+    // 録画モードでは URL の name を優先する（タブごとに別の名前で撮るため。保存した名前はタブ間で共有される）
+    () => recordingConfig()?.name ?? getSavedName(),
+  );
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
 
@@ -141,12 +145,15 @@ export default function Home() {
         ))}
       </main>
       {/* 匿名の利用統計の説明（M-C7）。08 §2.2 の「トップの下部の一文」を兼ねる */}
-      <footer className="site-foot">
-        <a className="foot-link" href="#/privacy">
-          匿名の利用統計について
-        </a>
-        <span className="foot-note">名前・チャット・部屋コードは送りません</span>
-      </footer>
+      {/* 録画モードでは計測を送らないので、説明のリンクも出さない（動画に映さない） */}
+      {!isRecordingMode() && (
+        <footer className="site-foot">
+          <a className="foot-link" href="#/privacy">
+            匿名の利用統計について
+          </a>
+          <span className="foot-note">名前・チャット・部屋コードは送りません</span>
+        </footer>
+      )}
     </div>
   );
 }

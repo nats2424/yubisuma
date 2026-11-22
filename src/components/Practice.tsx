@@ -6,6 +6,7 @@ import StageTrack from '../games/micro/StageTrack';
 import { speedForStage, speedUpRuleText, TUNING } from '../games/micro/tuning';
 import { goRoom } from '../App';
 import { trackPracticeOver } from '../lib/analytics';
+import { isRecordingMode, recordingConfig } from '../lib/recording';
 import { generateRoomCode, getSavedName, NAME_MAX, saveName } from '../lib/identity';
 import { Brand } from './Layout';
 import { PrivacyLink } from './Privacy';
@@ -50,7 +51,7 @@ export default function Practice() {
   }, []);
 
   const startChallenge = () =>
-    setMode({ kind: 'challenge', stage: 1, lives: LIVES, cleared: 0, round: startMicroRound(nextMicroId(), now(), 1, INTRO_MS) });
+    setMode({ kind: 'challenge', stage: 1, lives: LIVES, cleared: 0, round: startMicroRound(nextMicroId(undefined, TUNING, 1), now(), 1, INTRO_MS) });
 
   const onChallengeResult = (r: MicroResult) => {
     if (mode.kind !== 'challenge') return;
@@ -78,7 +79,7 @@ export default function Practice() {
         stage: next,
         lives,
         cleared,
-        round: startMicroRound(nextMicroId(round.microId), now(), speedForStage(next), INTRO_MS),
+        round: startMicroRound(nextMicroId(round.microId, TUNING, next), now(), speedForStage(next), INTRO_MS),
       });
     }, VERDICT_MS);
   };
@@ -197,7 +198,7 @@ export default function Practice() {
       <main className="practice-main">{body}</main>
       {/* 遊びの邪魔にならないよう、挑戦中（ラッシュの挑戦・単発の練習のどちらも）は出さない。
           タイトルとゲームオーバーの画面でだけ出す（説明はモーダルで開くので、開いても画面は途切れない） */}
-      {mode.kind !== 'challenge' && mode.kind !== 'single' && (
+      {mode.kind !== 'challenge' && mode.kind !== 'single' && !isRecordingMode() && (
         <footer className="site-foot">
           <PrivacyLink />
         </footer>
@@ -211,7 +212,7 @@ function OverExtras({ cleared }: { cleared: number }) {
   const [note, setNote] = useState('');
   // 名前が保存されていなければ、部屋を作る前に名前だけ聞く（トップに戻らずに済むように）
   const [asking, setAsking] = useState(false);
-  const [name, setName] = useState(getSavedName);
+  const [name, setName] = useState(() => recordingConfig()?.name ?? getSavedName());
 
   const shareRecord = async () => {
     const r = await shareOrCopy({ title: 'SUKIMA', text: recordText(cleared), url: practiceUrl() });

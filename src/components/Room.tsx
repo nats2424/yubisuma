@@ -4,6 +4,7 @@ import { CATEGORIES, GAMES, gamesIn } from '../games/registry';
 import { canPlayWith, playersShort, sortGamesForPlayers } from '../games/order';
 import { CATEGORY_INFO, resolveOptions, type GameDef } from '../games/types';
 import { getPlayerId, getSavedName, NAME_MAX, saveName } from '../lib/identity';
+import { isRecordingMode, recordingConfig } from '../lib/recording';
 import { isOnlineMode } from '../lib/transport';
 import { chatBlockedUntil, MAX_ROOM_PLAYERS, type RoomState } from '../room/logic';
 import { useRoom, type RoomHandle } from '../room/useRoom';
@@ -21,7 +22,8 @@ import { ConfirmButton, Panel } from './ui';
 type Props = { code: string; create: boolean; initialGame?: string; onCreated: () => void };
 
 export default function Room({ code, create, initialGame, onCreated }: Props) {
-  const [name, setName] = useState(getSavedName);
+  // 録画モードでは URL の name を優先する（同じブラウザのタブ同士でも別の名前で参加させるため）
+  const [name, setName] = useState(() => recordingConfig()?.name ?? getSavedName());
   const [confirmed, setConfirmed] = useState(() => Boolean(getSavedName()));
 
   useEffect(() => {
@@ -354,9 +356,11 @@ function RoomScreen({ room, state }: { room: RoomHandle; state: RoomState }) {
           {state.game ? <GameArea room={room} state={state} /> : <Lobby room={room} state={state} />}
           <Members state={state} me={me} isHost={isHost} online={online} onKick={(id) => dispatch({ type: 'kick', target: id })} />
           {/* 匿名の利用統計の説明（M-C7）。部屋を抜けないようモーダルで開く */}
-          <footer className="site-foot room-foot">
-            <PrivacyLink />
-          </footer>
+          {!isRecordingMode() && (
+            <footer className="site-foot room-foot">
+              <PrivacyLink />
+            </footer>
+          )}
         </main>
         {wide ? (
           <aside className="room-side">
