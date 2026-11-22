@@ -3,6 +3,7 @@
 - 作成：SNS Marketer（2026-11-21）。PO の質問「プラットフォームごとに参考になる競合アカウントを見たい」「理念が近い会社・個人も知りたい」への回答
 - 前提：最優先の場面は**集まっているときのスキマ時間（対面）**（D-25・D-46）、SNS は作り手の名義（D-36）、始める順は X → YouTube ショート → TikTok（D-29）、PO は週 4 時間で実名・顔・声を普段出さない（NORTH_STAR §4）
 - **調べ方と限界**：Web 検索の結果（記事・公式サイト・プレスリリース・第三者の統計サイト）だけで確かめた。今回の環境では X・TikTok・YouTube・Instagram のページを直接開けなかったので、**フォロワー数はほとんど確認できていない**（載せた数字は出典と時点を書いた第三者の値）。アカウントの実在とハンドルが検索結果で確かめられたものだけを載せ、確かめられなかったものは末尾の「載せなかったもの」に回した
+- 2026-11-22：§1.2 に Gemini の調査で挙がった YouTube のチャンネルを追記した（数字は Gemini の記載・要確認）
 - 前回の調査（`2026-11-benchmark-report.md`）にあった lauhi_gamecreate・Cam_indie・Solomaker・OCTOPinbs は、今回の検索では実在を確かめられなかったので載せていない
 
 ---
@@ -41,6 +42,18 @@
 | [Jackbox Games](https://www.youtube.com/channel/UCTgbnnu6lSBAewEKjQ8me0w)（海外・会社） | 登録者 約 5.0 万・動画 1,394 本（[socialcounts、2026-08-01 時点](https://socialcounts.org/youtube-live-subscriber-count/UCTgbnnu6lSBAewEKjQ8me0w)） | 珍回答・大喜利の結果画面、新作の紹介。配信者の切り抜き文化に乗る | ◯ 結果画面の「オチ」で切る。× 配信者コラボ・声優の音声 |
 | [ボードゲーム倶楽部](https://yutura.net/channel/60570/)（日本・4 人組。リンクは第三者の統計サイトの掲載ページ） | 未確認。TikTok で 1,000 万再生超の動画が複数（[KAI-YOU](https://kai-you.net/word/%E3%83%9C%E3%83%BC%E3%83%89%E3%82%B2%E3%83%BC%E3%83%A0%E5%80%B6%E6%A5%BD%E9%83%A8)）。ショートのチャンネルに登録者が集まり、そちらを本体にした（同） | **同じテーブルで遊ぶ様子**のショート。対面の盛り上がりの見せ方の手本 | ◯ 「対面で遊ぶとこうなる」の構図・テロップ。× 顔出し・声。SUKIMA は手元の AI イメージ（型 B）か、本物の画面の 4 分割で代える |
 | 事例：Hamuno（海外の個人開発者） | — （[AUTOMATON 2026-03](https://automaton-media.com/articles/newsjp/20260310-427904/)） | 2 年前の作品を、ショート動画の毎日投稿で再ヒットさせた | ◯ 「量を出して当たりを探す」考え方。アカウントの URL は確かめられず |
+
+**2026-11-22 追記：Gemini の調査で挙がったチャンネル**（PO が Gemini Deep Research で調べた結果、`2026-11-gemini-youtube.md`。**登録者数・本数は Gemini の記載で、SNS Marketer は開いて確かめていない。要確認**）
+
+| チャンネル | 数（Gemini の記載・要確認） | 反応が集まる投稿の型 | 真似できる／できない |
+| --- | --- | --- | --- |
+| [ボードゲーム倶楽部](https://www.youtube.com/channel/UC9ngdY575VSxAvVgoC85ROw)（上の行と同じチャンネルの YouTube の URL） | 登録者 約 8.25 万 | 同じテーブルで遊ぶ様子のショート | 上の行と同じ。顔・声は真似できない |
+| [ずんだもんのAIゲーム研究部](https://www.youtube.com/@AIGameLabJP) | 約 6,290 人・26 本 | **合成音声・顔なし**で「AI にワードウルフをさせた」などの**実験** | ◯ 本数が少なくても伸びている形。「自動操作だからできる実験」（反射神経で早押しし続ける等）に置き換えられる。× ワードウルフを主役にすること（競合と重なる。plan.md §7.7）。合成音声は最初の 4 週間は使わない（plan.md §7.3） |
+| [【ダレカノアソビバ】](https://www.youtube.com/@darekanoasobiba) | 約 1,670 人・397 本 | 「1 分ボドゲ紹介」のシリーズ | ◯ 1 分で 1 作品の構成。**注意**：本数のわりに登録者が少ない＝同じ型の量産だけでは伸びない例として見る |
+| プロボド | 約 1.15 万人 | 未確認 | URL 未確認。PO が開いて見る候補 |
+| JELLY JELLY CHANNEL（§2 の JELLY JELLY CAFE の YouTube と思われる・未確認） | 約 6,940 人 | 未確認 | 同上 |
+| マーマン Asobi／月花女子会／きたこしちゃんねる／個人ゲーム開発副業カレッジ大学 | 未確認 | 未確認 | Gemini が実在を確認したとしている。URL 未確認 |
+| 対照：ずんだもんのゲーム開発 | 開発日誌だけで 15 本・約 50 人 | 開発日誌 | **開発日誌より「遊べるお題・実験・30 秒の遊び方」に振るべき**（Gemini の解釈）。SUKIMA は開発の話を X に回し、ショートでは作り手の一言の 1 行にとどめる（plan.md §7.8） |
 
 ### 1.3 TikTok
 
@@ -103,7 +116,7 @@
 | SNS | 主に使う型 | 出し方 | 根拠・仮定 |
 | --- | --- | --- | --- |
 | X | ①（投票機能）・③・⑥ | ①は X の投票を付け、24 時間後に結果を引用して「4人で遊ぶとこう割れた」動画を返す。URL は本文でなく返信欄に置く | 返信が付くと届く範囲が広がる（2023 年に X が公開したおすすめの仕組みで、返信の重みが「いいね」より大きかった。現在の重みは不明・要確認）。URL を本文に置くと表示が減るという説は出典なし（前回の調査）なので、返信欄に置くのは安全側の仮定 |
-| YouTube ショート | ②・③ | ②の答えは**固定コメント**に（ショートは説明欄・コメントの URL がタップできないので、URL は誘導しない）。止める直前で終わり、ループして見直させる | ループ・最後まで見られた割合が届く範囲に効く、は前回の調査の経験則（出典なし・仮定） |
+| YouTube ショート | ②・③ | ②の答えは**固定コメント**に（ショートは説明欄・コメントの URL がタップできないので、URL は誘導しない。導線はプロフィールの 1 つ目のリンクと関連動画のまとめ動画。plan.md §7.1）。止める直前で終わり、ループして見直させる | ループ・最後まで見られた割合が届く範囲に効く、は前回の調査の経験則（出典なし・仮定） |
 | TikTok | ②・④ | ④はコメントへの「動画で返信」機能で次のお題に答える。冒頭 1 秒に指示の文字 | 「1 本 1 要素・最初の数秒」は Among Us の講演（出典あり）。「動画で返信」の仕様は要確認 |
 | Instagram リール | ⑤・① | 保存用のまとめを画像で、リールは X と同じ動画を使い回す | 4 週目の振り返りで始めるか決める（D-29） |
 
@@ -151,4 +164,5 @@
 - [inside-games：ito の X キャンペーン（2026-07）](https://www.inside-games.jp/release/prtimes/20260701/294302.html)／[inside-games：はぁって言うゲーム 120 万部（2026-08）](https://www.inside-games.jp/release/prtimes/20260807/300702.html)
 - オインクゲームズの X・Instagram のハンドル：検索で見つかった同社の [PR TIMES のリリース](https://prtimes.jp/main/html/rd/p/000000115.000051135.html)
 - [AUTOMATON：15 秒トレイラーの流行](https://automaton-media.com/articles/newsjp/indie-game-dev-15s-trailer-20250205-327390/)／[GamesRadar](https://gamesradar.com/platforms/pc-gaming/my-steam-wishlist-is-bigger-than-ever-thanks-to-the-indie-devs-flooding-social-media-with-15-second-clips-explaining-their-games)／[AUTOMATON：「日本の皆さん、こんにちは」](https://automaton-media.com/articles/newsjp/20260515-443303/)／[AUTOMATON：Hamuno](https://automaton-media.com/articles/newsjp/20260310-427904/)
+- Gemini（Deep Research）の YouTube 運用の調査（PO 提供、2026-11-22）：`2026-11-gemini-youtube.md`
 - [The Skin Deep](https://theskindeep.com/)／[JELLY JELLY CAFE](https://jellyjellycafe.com/)／[Jackbox at Work](https://www.jackboxgames.com/jackbox-at-work)
