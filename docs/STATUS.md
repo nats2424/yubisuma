@@ -15,7 +15,7 @@
 - 組織の方向（`docs/NORTH_STAR.md`、PO 確認済み）：SUKIMA は 1 作品目で、最優先は SNS のフォロワーを増やすこと
 
 ## 進行中
-- **ブランド**（`docs/strategy/brand/05`）：D-67〜D-69 決定。名前 WATTO は PO のハンドル・J-PlatPat 確認待ち（落ちたら PATTO→DOTTO）。表示名は当面「SUKIMA｜WATTO」
+- **ブランド**（`docs/strategy/brand/05`）：D-67〜D-69 決定。名前は **PATTO**（WATTO は商標で不可）。LIXIL の第 9 類の指定商品の確認待ち。ハンドル候補 `patto_works`（4 SNS で空き）。表示名は当面「SUKIMA｜PATTO」。一言の約束「ぱっと」との重なりは要対応
 - **SNS**：plan.md に型 C（もしもストーリー→SUKIMA）、AI ボイス（VOICEVOX 1 声固定の案）、note 月 1 本。PO 判断 D-70〜D-74。**次の実装**：計測の `?s=` に `note`（と Instagram を始めるなら `ig`）を追加
 - PO の手作業の順：~~Umami 登録~~（済）→ ~~QR の読み取り確認~~（済、2026-11-26） → WATTO の確認（50〜65 分）→ 翌週に SNS アカウント作成（2.5〜3.5 時間）→ 試遊 4 組
 - D-39：専門家への相談は PO が自分で行う（AI は勝手に依頼しない）。D-40：有料に切り替える前に毎回 PO の承認
