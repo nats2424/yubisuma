@@ -3,7 +3,7 @@
 新しいセッションで作業を再開するときは、このファイル → `docs/NORTH_STAR.md` → `docs/DECISIONS.md` → `CLAUDE.md` の順に読めば、会話の履歴なしで続きから始められる。
 オーケストレーターは、区切りのよいところでこのファイルを更新する。
 
-- 最終更新：2026-11-26（ブランド決定：WATTO〈確認待ち〉・一言の約束・性格。前からの判断待ちを決定。SNS 計画に型 C〈もしもストーリー〉と AI ボイス。PO が Umami 登録中〈リージョンは US を推奨〉）
+- 最終更新：2026-11-26（ブランド決定：WATTO〈確認待ち〉・一言の約束・性格。前からの判断待ちを決定。SNS 計画に型 C〈もしもストーリー〉と AI ボイス。Umami 登録・設定完了、本番からの送信を確認〈US リージョン〉）
 - 依頼の窓口：「Agent roles directory structure」セッション（オーケストレーター）に一本化。作業ブランチは `claude/agent-roles-directory-x2dzcl`
 - 旧セッション「マルチプレイミニゲームサイト」は使わない（中身は PR #1 で `main` に取り込み済み）
 
@@ -17,7 +17,7 @@
 ## 進行中
 - **ブランド**（`docs/strategy/brand/05`）：D-67〜D-69 決定。名前 WATTO は PO のハンドル・J-PlatPat 確認待ち（落ちたら PATTO→DOTTO）。表示名は当面「SUKIMA｜WATTO」
 - **SNS**：plan.md に型 C（もしもストーリー→SUKIMA）、AI ボイス（VOICEVOX 1 声固定の案）、note 月 1 本。PO 判断 D-70〜D-74。**次の実装**：計測の `?s=` に `note`（と Instagram を始めるなら `ig`）を追加
-- PO の手作業の順：Umami 登録 → QR の読み取り確認 → WATTO の確認（50〜65 分）→ 翌週に SNS アカウント作成（2.5〜3.5 時間）→ 試遊 4 組
+- PO の手作業の順：~~Umami 登録~~（済）→ QR の読み取り確認 → WATTO の確認（50〜65 分）→ 翌週に SNS アカウント作成（2.5〜3.5 時間）→ 試遊 4 組
 - D-39：専門家への相談は PO が自分で行う（AI は勝手に依頼しない）。D-40：有料に切り替える前に毎回 PO の承認
 - **最小計測（J-23）**：PR #5 で main に反映（`VITE_UMAMI_WEBSITE_ID` 未設定なので送信なし）。PO が Umami に登録し Production に ID を入れたら開始（手順は 02 §14.7 の PO の手順）。送り先 gateway.umami.is・運営 Umami Software, Inc.（米国）は検索で確認済み。User-Agent の要件はブラウザ既定で足りるか、登録後の Realtime で確かめる
 - **ジャンルの需要**（`docs/strategy/genre-demand/` 05 完成）：PO 判断 D-58〜D-62。Gemini の調査結果（需要・YouTube 運用の 2 本のプロンプトを PO に渡し済み）待ち。届いたら 05 に追補、YouTube の方は marketing/sns/plan.md に反映
